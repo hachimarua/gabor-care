@@ -1,0 +1,25 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <defs>
+    <radialGradient id="bg" cx="35%" cy="25%">
+      <stop offset="0" stop-color="#f7f8f4"/>
+      <stop offset="1" stop-color="#dce3da"/>
+    </radialGradient>
+    <filter id="soft">
+      <feGaussianBlur stdDeviation="3"/>
+    </filter>
+    <clipPath id="round">
+      <rect width="512" height="512" rx="112"/>
+    </clipPath>
+  </defs>
+  <g clip-path="url(#round)">
+    <rect width="512" height="512" fill="url(#bg)"/>
+    <circle cx="256" cy="256" r="146" fill="#777f79"/>
+    <g filter="url(#soft)" opacity=".92">
+      <path d="M92 390 390 92" stroke="#edf0eb" stroke-width="38"/>
+      <path d="M122 420 420 122" stroke="#303834" stroke-width="38"/>
+      <path d="M62 360 360 62" stroke="#303834" stroke-width="38"/>
+      <path d="M152 450 450 152" stroke="#edf0eb" stroke-width="38"/>
+    </g>
+    <circle cx="256" cy="256" r="150" fill="none" stroke="#5d7866" stroke-width="12"/>
+  </g>
+</svg>

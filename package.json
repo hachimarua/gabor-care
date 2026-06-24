@@ -1,0 +1,10 @@
+{
+  "name": "gabor-eye-pwa",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "serve": "python3 -m http.server 4173",
+    "verify": "node scripts/verify.mjs"
+  }
+}
