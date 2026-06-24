@@ -4,6 +4,7 @@
   "private": true,
   "type": "module",
   "scripts": {
+    "build": "node scripts/build.mjs",
     "serve": "python3 -m http.server 4173",
     "verify": "node scripts/verify.mjs"
   }
