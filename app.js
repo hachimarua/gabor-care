@@ -384,9 +384,12 @@ function startStandard(draft) {
 }
 
 function startGame(draft) {
+  const columns = 4;
+  const rows = 3;
   let remaining = state.durationSec;
   let timerId;
   let running = true;
+  let acceptingInput = true;
   let correct = 0;
   let attempts = 0;
   let targetIndex = 0;
@@ -431,47 +434,53 @@ function startGame(draft) {
   function drawRound() {
     const orientations = [0, 45, 90, 135];
     const frequencies = [2, 4, 6];
+    const combinations = orientations.flatMap((orientation) =>
+      frequencies.map((spatialFrequency) => ({
+        orientation,
+        spatialFrequency,
+        phase: 0,
+      }))
+    );
     sample = {
       orientation: orientations[Math.floor(Math.random() * orientations.length)],
       spatialFrequency: frequencies[Math.floor(Math.random() * frequencies.length)],
-      phase: Math.random() < 0.5 ? 0 : Math.PI,
+      phase: 0,
     };
-    targetIndex = Math.floor(Math.random() * 16);
-    patches = Array.from({ length: 16 }, (_, index) => {
-      if (index === targetIndex) return { ...sample };
-      let patch;
-      do {
-        patch = {
-          orientation: orientations[Math.floor(Math.random() * orientations.length)],
-          spatialFrequency: frequencies[Math.floor(Math.random() * frequencies.length)],
-          phase: Math.random() < 0.5 ? 0 : Math.PI,
-        };
-      } while (
-        patch.orientation === sample.orientation &&
-        patch.spatialFrequency === sample.spatialFrequency &&
-        patch.phase === sample.phase
-      );
-      return patch;
-    });
+    patches = shuffle(combinations);
+    targetIndex = patches.findIndex((patch) => isSameGamePatch(patch, sample));
+    canvas.dataset.targetIndex = String(targetIndex);
+    canvas.dataset.matchingCount = String(
+      patches.filter((patch) => isSameGamePatch(patch, sample)).length
+    );
+    acceptingInput = true;
     drawSample(sampleCanvas, sample);
-    drawGameGrid(canvas, patches);
+    drawGameGrid(canvas, patches, { columns, rows });
   }
 
   function onTap(event) {
-    if (!running) return;
+    if (!running || !acceptingInput) return;
     const rect = canvas.getBoundingClientRect();
-    const col = Math.floor(((event.clientX - rect.left) / rect.width) * 4);
-    const row = Math.floor(((event.clientY - rect.top) / rect.height) * 4);
-    const selected = row * 4 + col;
+    const col = Math.floor(((event.clientX - rect.left) / rect.width) * columns);
+    const row = Math.floor(((event.clientY - rect.top) / rect.height) * rows);
+    const selected = row * columns + col;
+    if (selected < 0 || selected >= patches.length) return;
+    acceptingInput = false;
     attempts += 1;
     if (selected === targetIndex) {
       correct += 1;
       document.querySelector("#game-score").textContent = correct;
       if (navigator.vibrate) navigator.vibrate(20);
-      drawRound();
+      drawGameGrid(canvas, patches, { columns, rows, correctIndex: targetIndex });
+      window.setTimeout(drawRound, 280);
     } else {
       if (navigator.vibrate) navigator.vibrate([20, 40, 20]);
-      flashWrong(canvas, selected, patches);
+      drawGameGrid(canvas, patches, {
+        columns,
+        rows,
+        wrongIndex: selected,
+        correctIndex: targetIndex,
+      });
+      window.setTimeout(drawRound, 700);
     }
   }
 
@@ -802,38 +811,43 @@ function drawMask(ctx, canvas) {
 }
 
 function drawSample(canvas, patch) {
-  const ctx = canvas.getContext("2d", { alpha: false });
-  const size = canvas.width;
-  ctx.fillStyle = "rgb(136,139,136)";
-  ctx.fillRect(0, 0, size, size);
-  const pxPerMm = (state.calibrationPxPerMm || 5) * (window.devicePixelRatio || 1);
-  const periodPx = periodPixels(patch.spatialFrequency, pxPerMm, state.distanceMm);
-  drawGabor(ctx, size / 2, size / 2, {
-    ...patch,
-    periodPx,
-    sigma: size / 7,
-    contrast: 0.72,
-  });
-}
-
-function drawGameGrid(canvas, patches, wrongIndex = null) {
   const ctx = prepareCanvas(canvas);
   const { width, height } = canvasCssSize(canvas);
   ctx.fillStyle = "rgb(136,139,136)";
   ctx.fillRect(0, 0, width, height);
-  const cellW = width / 4;
-  const cellH = height / 4;
-  const patchRadius = Math.min(cellW, cellH) * 0.28;
+  const pxPerMm = state.calibrationPxPerMm || 5;
+  const periodPx = periodPixels(patch.spatialFrequency, pxPerMm, state.distanceMm);
+  drawGabor(ctx, width / 2, height / 2, {
+    ...patch,
+    periodPx,
+    sigma: 11,
+    contrast: 0.72,
+  });
+}
+
+function drawGameGrid(canvas, patches, options = {}) {
+  const {
+    columns = 4,
+    rows = 3,
+    wrongIndex = null,
+    correctIndex = null,
+  } = options;
+  const ctx = prepareCanvas(canvas);
+  const { width, height } = canvasCssSize(canvas);
+  ctx.fillStyle = "rgb(136,139,136)";
+  ctx.fillRect(0, 0, width, height);
+  const cellW = width / columns;
+  const cellH = height / rows;
   const pxPerMm = state.calibrationPxPerMm || 5;
 
   patches.forEach((patch, index) => {
-    const col = index % 4;
-    const row = Math.floor(index / 4);
+    const col = index % columns;
+    const row = Math.floor(index / columns);
     const periodPx = periodPixels(patch.spatialFrequency, pxPerMm, state.distanceMm);
     drawGabor(ctx, col * cellW + cellW / 2, row * cellH + cellH / 2, {
       ...patch,
       periodPx: Math.max(4, periodPx),
-      sigma: patchRadius / 2.6,
+      sigma: 11,
       contrast: 0.72,
     });
     if (index === wrongIndex) {
@@ -841,12 +855,28 @@ function drawGameGrid(canvas, patches, wrongIndex = null) {
       ctx.lineWidth = 3;
       ctx.strokeRect(col * cellW + 6, row * cellH + 6, cellW - 12, cellH - 12);
     }
+    if (index === correctIndex) {
+      ctx.strokeStyle = "#31533f";
+      ctx.lineWidth = 4;
+      ctx.strokeRect(col * cellW + 6, row * cellH + 6, cellW - 12, cellH - 12);
+    }
   });
 }
 
-function flashWrong(canvas, selected, patches) {
-  drawGameGrid(canvas, patches, selected);
-  window.setTimeout(() => drawGameGrid(canvas, patches), 220);
+function isSameGamePatch(left, right) {
+  return (
+    left.orientation === right.orientation &&
+    left.spatialFrequency === right.spatialFrequency
+  );
+}
+
+function shuffle(items) {
+  const shuffled = [...items];
+  for (let index = shuffled.length - 1; index > 0; index -= 1) {
+    const swapIndex = Math.floor(Math.random() * (index + 1));
+    [shuffled[index], shuffled[swapIndex]] = [shuffled[swapIndex], shuffled[index]];
+  }
+  return shuffled;
 }
 
 function formatTimer(seconds) {
