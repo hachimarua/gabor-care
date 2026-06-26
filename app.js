@@ -6,6 +6,7 @@ const DEFAULT_STATE = {
   distanceMm: 400,
   durationSec: 60,
   contrast: 0.18,
+  gameDifficulty: "normal",
   sessions: [],
 };
 
@@ -123,7 +124,7 @@ function renderHome() {
             ${history.map((session) => `
               <div class="history-row">
                 <div>
-                  <strong>${session.mode === "standard" ? "標準" : "絵探し"}</strong>
+                  <strong>${session.mode === "standard" ? "標準" : `絵探し・${gameDifficultyLabel(session.gameDifficulty)}`}</strong>
                   <span>${formatDate(session.endedAt)} / 疲労 ${session.fatigueBefore}→${session.fatigueAfter}</span>
                 </div>
                 <div class="history-score">${session.mode === "standard" ? `${session.accuracy}%` : `${session.correct}問`}</div>
@@ -137,13 +138,17 @@ function renderHome() {
 
   document.querySelector("#settings-button").addEventListener("click", renderSettings);
   document.querySelector("#standard-mode").addEventListener("click", () => beginMode("standard"));
-  document.querySelector("#game-mode").addEventListener("click", () => beginMode("game"));
+  document.querySelector("#game-mode").addEventListener("click", () => renderModeSetup("game"));
   document.querySelector("#calibration-notice")?.addEventListener("click", renderCalibration);
 }
 
 function signed(value) {
   if (value > 0) return `+${value}`;
   return String(value);
+}
+
+function gameDifficultyLabel(difficulty) {
+  return difficulty === "deep" ? "じっくり" : "ふつう";
 }
 
 function beginMode(mode) {
@@ -207,6 +212,16 @@ function renderModeSetup(mode) {
         <p class="lede">${mode === "standard"
           ? "画面から約40cm離れ、2回の表示のうち中央に薄い縞があった方を選びます。"
           : "画面から約40cm離れ、見本と同じ向き・細かさの縞をタップします。"}</p>
+        ${mode === "game" ? `
+          <div class="settings-row game-difficulty-row">
+            <h3>難易度</h3>
+            <div class="option-row" aria-label="絵探しゲームの難易度">
+              <button class="option-button ${state.gameDifficulty === "normal" ? "selected" : ""}" data-game-difficulty="normal">ふつう</button>
+              <button class="option-button ${state.gameDifficulty === "deep" ? "selected" : ""}" data-game-difficulty="deep">じっくり</button>
+            </div>
+            <p class="helper">${state.gameDifficulty === "deep" ? "細かく近い縞を、じっくり見比べます。" : "向きと細かさを見比べる、16択です。"}</p>
+          </div>
+        ` : ""}
         <div class="option-row">
           <button class="option-button ${state.durationSec === 60 ? "selected" : ""}" data-duration="60">1分</button>
           <button class="option-button ${state.durationSec === 180 ? "selected" : ""}" data-duration="180">3分</button>
@@ -223,6 +238,13 @@ function renderModeSetup(mode) {
   document.querySelectorAll("[data-duration]").forEach((button) => {
     button.addEventListener("click", () => {
       state.durationSec = Number(button.dataset.duration);
+      saveState();
+      renderModeSetup(mode);
+    });
+  });
+  document.querySelectorAll("[data-game-difficulty]").forEach((button) => {
+    button.addEventListener("click", () => {
+      state.gameDifficulty = button.dataset.gameDifficulty;
       saveState();
       renderModeSetup(mode);
     });
@@ -385,7 +407,8 @@ function startStandard(draft) {
 
 function startGame(draft) {
   const columns = 4;
-  const rows = 3;
+  const rows = 4;
+  const difficulty = state.gameDifficulty;
   let remaining = state.durationSec;
   let timerId;
   let running = true;
@@ -405,7 +428,7 @@ function startGame(draft) {
       </header>
       <section class="game-instruction">
         <canvas class="sample-canvas" id="sample-canvas" width="128" height="128" aria-label="見本"></canvas>
-        <div><strong>同じ縞を探す</strong><br><span class="helper">向きと細かさを見比べます</span></div>
+        <div><strong>同じ縞を探す</strong><br><span class="helper">${gameDifficultyLabel(difficulty)}・16択</span></div>
         <div class="game-score"><span id="game-score">0</span><br><span class="helper">正解</span></div>
       </section>
       <section class="game-stage">
@@ -433,7 +456,7 @@ function startGame(draft) {
 
   function drawRound() {
     const orientations = [0, 45, 90, 135];
-    const frequencies = [2, 4, 6];
+    const frequencies = difficulty === "deep" ? [4, 5, 6, 7] : [2, 4, 6, 8];
     const combinations = orientations.flatMap((orientation) =>
       frequencies.map((spatialFrequency) => ({
         orientation,
@@ -493,6 +516,7 @@ function startGame(draft) {
       attempts,
       accuracy: attempts ? Math.round((correct / attempts) * 100) : 0,
       durationSec: state.durationSec,
+      gameDifficulty: difficulty,
       endedAt: new Date().toISOString(),
     });
   }
