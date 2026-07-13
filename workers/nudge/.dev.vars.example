@@ -1,0 +1,4 @@
+# Set real values with `wrangler secret put`; do not commit a .dev.vars file.
+VAPID_PUBLIC_KEY=BASE64URL_PUBLIC_KEY
+VAPID_PRIVATE_KEY=BASE64URL_PRIVATE_KEY
+VAPID_SUBJECT=mailto:you@example.com

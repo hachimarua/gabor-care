@@ -1,0 +1,16 @@
+{
+  "name": "gabor-care-nudge",
+  "main": "src/index.js",
+  "compatibility_date": "2026-07-13",
+  "compatibility_flags": ["nodejs_compat"],
+  "triggers": {
+    "crons": ["*/5 * * * *"]
+  },
+  "d1_databases": [
+    {
+      "binding": "NUDGE_DB",
+      "database_name": "gabor-care-nudge",
+      "database_id": "638e8d65-a4d2-4d63-b1c1-a5617272e23a"
+    }
+  ]
+}

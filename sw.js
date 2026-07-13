@@ -1,4 +1,4 @@
-const CACHE_NAME = "gabor-care-v3";
+const CACHE_NAME = "gabor-care-v4";
 const APP_SHELL = [
   "./",
   "./index.html",
@@ -35,4 +35,36 @@ self.addEventListener("fetch", (event) => {
       })
       .catch(() => caches.match(event.request))
   );
+});
+
+self.addEventListener("push", (event) => {
+  let data = {};
+  try {
+    data = event.data?.json() || {};
+  } catch {
+    data = {};
+  }
+  const notification = self.registration.showNotification(data.title || "ガボールアイ", {
+    body: data.body || "3分だけ、絵探しゲームをやってみませんか？",
+    icon: "./icons/icon-192.png",
+    badge: "./icons/icon-192.png",
+    tag: "gabor-care-nudge",
+    renotify: false,
+    data: { url: data.url || "./#nudge" },
+  });
+  const badge = self.navigator.setAppBadge?.(1) || Promise.resolve();
+  event.waitUntil(Promise.all([notification, badge]));
+});
+
+self.addEventListener("notificationclick", (event) => {
+  event.notification.close();
+  const url = new URL(event.notification.data?.url || "./#nudge", self.location.origin).href;
+  event.waitUntil((async () => {
+    const clients = await self.clients.matchAll({ type: "window", includeUncontrolled: true });
+    if (clients[0]) {
+      await clients[0].navigate(url);
+      return clients[0].focus();
+    }
+    return self.clients.openWindow(url);
+  })());
 });

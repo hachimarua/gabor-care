@@ -200,6 +200,10 @@ h3 {
   font-weight: 750;
 }
 
+.summary-date {
+  font-size: 1.05rem;
+}
+
 .summary-label {
   display: block;
   color: var(--muted);
@@ -489,6 +493,15 @@ h3 {
 
 .choice-button:disabled {
   opacity: 0.45;
+}
+
+.nudge-controls {
+  margin-top: 12px;
+}
+
+.nudge-time-select {
+  min-height: 44px;
+  padding: 0 12px;
 }
 
 .game-instruction {

@@ -1,12 +1,23 @@
 const app = document.querySelector("#app");
 
 const STORAGE_KEY = "gabor-care-state-v1";
+const NUDGE_API = "https://gabor-care-nudge.hachiotsssg.workers.dev/api/nudge";
+const DEFAULT_PREFERRED_NUDGE_MINUTE = 18 * 60 + 30;
 const DEFAULT_STATE = {
   calibrationPxPerMm: null,
   distanceMm: 400,
-  durationSec: 60,
+  durationSec: 180,
+  durationVersion: 2,
   contrast: 0.18,
-  gameDifficulty: "normal",
+  standardTrainingVersion: 2,
+  standardTutorialCompleted: false,
+  nudge: {
+    deviceId: null,
+    token: null,
+    enabled: false,
+    preferredMinute: DEFAULT_PREFERRED_NUDGE_MINUTE,
+    pendingCompletedAt: null,
+  },
   sessions: [],
 };
 
@@ -15,7 +26,21 @@ let activeCleanup = null;
 
 function loadState() {
   try {
-    return { ...DEFAULT_STATE, ...JSON.parse(localStorage.getItem(STORAGE_KEY) || "{}") };
+    const stored = JSON.parse(localStorage.getItem(STORAGE_KEY) || "{}");
+    const isLegacyStandardTraining = stored.standardTrainingVersion !== 2;
+    const isLegacyDuration = stored.durationVersion !== 2;
+    return {
+      ...DEFAULT_STATE,
+      ...stored,
+      nudge: { ...DEFAULT_STATE.nudge, ...(stored.nudge || {}) },
+      durationSec: isLegacyDuration ? DEFAULT_STATE.durationSec : stored.durationSec ?? DEFAULT_STATE.durationSec,
+      durationVersion: 2,
+      // The old task used a different stimulus, so its adaptive contrast cannot
+      // be meaningfully carried into the new central-only task.
+      contrast: isLegacyStandardTraining ? DEFAULT_STATE.contrast : stored.contrast ?? DEFAULT_STATE.contrast,
+      standardTrainingVersion: 2,
+      standardTutorialCompleted: isLegacyStandardTraining ? false : Boolean(stored.standardTutorialCompleted),
+    };
   } catch {
     return { ...DEFAULT_STATE };
   }
@@ -23,6 +48,109 @@ function loadState() {
 
 function saveState() {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+}
+
+function getNudgeDeviceId() {
+  if (!state.nudge.deviceId) {
+    state.nudge.deviceId = crypto.randomUUID();
+    saveState();
+  }
+  return state.nudge.deviceId;
+}
+
+function isStandaloneApp() {
+  return window.matchMedia("(display-mode: standalone)").matches || window.navigator.standalone === true;
+}
+
+function nudgeTimeLabel(minute) {
+  return `${String(Math.floor(minute / 60)).padStart(2, "0")}:${String(minute % 60).padStart(2, "0")}`;
+}
+
+function nudgeTimeOptions() {
+  const options = [];
+  for (let minute = 6 * 60 + 30; minute <= 21 * 60 + 30; minute += 30) {
+    options.push(`<option value="${minute}" ${state.nudge.preferredMinute === minute ? "selected" : ""}>${nudgeTimeLabel(minute)}</option>`);
+  }
+  return options.join("");
+}
+
+function base64UrlToUint8Array(value) {
+  const padded = value.replaceAll("-", "+").replaceAll("_", "/") + "=".repeat((4 - value.length % 4) % 4);
+  const binary = atob(padded);
+  return Uint8Array.from(binary, (character) => character.charCodeAt(0));
+}
+
+async function nudgeRequest(path, options = {}) {
+  const headers = { "content-type": "application/json", ...(options.headers || {}) };
+  if (state.nudge.token) headers["x-device-token"] = state.nudge.token;
+  const response = await fetch(`${NUDGE_API}/${path}`, { ...options, headers });
+  if (!response.ok) throw new Error(`nudge_${response.status}`);
+  return response.json();
+}
+
+async function enableNudge() {
+  if (!isStandaloneApp()) throw new Error("home_screen_required");
+  if (!("serviceWorker" in navigator) || !("PushManager" in window) || !("Notification" in window)) {
+    throw new Error("push_unsupported");
+  }
+  const config = await fetch(`${NUDGE_API}/config`, { cache: "no-store" }).then((response) => response.json());
+  if (!config.available || !config.publicKey) throw new Error("nudge_unavailable");
+  const permission = await Notification.requestPermission();
+  if (permission !== "granted") throw new Error("permission_denied");
+
+  const registration = await navigator.serviceWorker.ready;
+  const subscription = await registration.pushManager.getSubscription()
+    || await registration.pushManager.subscribe({
+      userVisibleOnly: true,
+      applicationServerKey: base64UrlToUint8Array(config.publicKey),
+    });
+  const result = await nudgeRequest("subscribe", {
+    method: "POST",
+    body: JSON.stringify({
+      deviceId: getNudgeDeviceId(),
+      subscription: subscription.toJSON(),
+      preferredMinute: state.nudge.preferredMinute,
+    }),
+    headers: {},
+  });
+  state.nudge.token = result.token;
+  state.nudge.enabled = true;
+  saveState();
+  await flushPendingNudgeCompletion();
+}
+
+async function saveNudgePreferences() {
+  if (!state.nudge.token) return;
+  await nudgeRequest("preferences", {
+    method: "POST",
+    body: JSON.stringify({
+      deviceId: getNudgeDeviceId(),
+      enabled: state.nudge.enabled,
+      preferredMinute: state.nudge.preferredMinute,
+    }),
+  });
+}
+
+async function flushPendingNudgeCompletion() {
+  const completedAt = state.nudge.pendingCompletedAt;
+  if (!state.nudge.enabled || !state.nudge.token || !completedAt) return;
+  try {
+    await nudgeRequest("complete", {
+      method: "POST",
+      body: JSON.stringify({ deviceId: getNudgeDeviceId(), completedAt }),
+    });
+    state.nudge.pendingCompletedAt = null;
+    saveState();
+    navigator.clearAppBadge?.();
+  } catch {
+    // Offline completion remains on this device and is sent on the next launch.
+  }
+}
+
+function queueNudgeCompletion() {
+  state.nudge.pendingCompletedAt = new Date().toISOString();
+  saveState();
+  void flushPendingNudgeCompletion();
 }
 
 function setScreen(markup, cleanup = null) {
@@ -41,24 +169,7 @@ function formatDate(iso) {
   }).format(new Date(iso));
 }
 
-function todaySessions() {
-  const today = new Date().toDateString();
-  return state.sessions.filter((session) => new Date(session.endedAt).toDateString() === today);
-}
-
-function streakDays() {
-  const days = new Set(state.sessions.map((session) => new Date(session.endedAt).toDateString()));
-  let count = 0;
-  const cursor = new Date();
-  while (days.has(cursor.toDateString())) {
-    count += 1;
-    cursor.setDate(cursor.getDate() - 1);
-  }
-  return count;
-}
-
 function renderHome() {
-  const today = todaySessions();
   const latest = state.sessions[0];
   const history = state.sessions.slice(0, 6);
   const calibrated = Boolean(state.calibrationPxPerMm);
@@ -71,19 +182,19 @@ function renderHome() {
       </header>
 
       <section class="hero">
-        <p class="eyebrow">今日の目のケア</p>
-        <h1>${today.length ? "今日は完了しています" : "1分だけ、見え方を整える"}</h1>
-        <p class="lede">低コントラストの縞を見分けたあと、遠くを見て目を休めます。</p>
+        <p class="eyebrow">使いたい日に、3分だけ</p>
+        <h1>${latest ? "また、見え方を整える" : "見え方を整える時間"}</h1>
+        <p class="lede">まずは絵探しゲームから。終わったら、遠くを見て目を休めます。</p>
       </section>
 
       <section class="summary-strip" aria-label="利用状況">
         <div class="summary-item">
-          <span class="summary-value">${today.length}</span>
-          <span class="summary-label">今日</span>
+          <span class="summary-value summary-date">${latest ? formatShortDate(latest.endedAt) : "−"}</span>
+          <span class="summary-label">前回</span>
         </div>
         <div class="summary-item">
-          <span class="summary-value">${streakDays()}</span>
-          <span class="summary-label">連続日</span>
+          <span class="summary-value">${state.sessions.length}</span>
+          <span class="summary-label">記録</span>
         </div>
         <div class="summary-item">
           <span class="summary-value">${latest?.fatigueDelta == null ? "−" : signed(latest.fatigueDelta)}</span>
@@ -99,15 +210,15 @@ function renderHome() {
       `}
 
       <section class="mode-list section" aria-label="トレーニングモード">
-        <button class="mode-card primary" id="standard-mode">
-          <h2>標準トレーニング</h2>
-          <p>2回の表示のうち、縞が見えた方を選びます。</p>
-          <span class="mode-meta"><span>${state.durationSec === 60 ? "1分" : "3分"}</span><span>推奨</span></span>
-        </button>
-        <button class="mode-card" id="game-mode">
+        <button class="mode-card primary" id="game-mode">
           <h2>絵探しゲーム</h2>
-          <p>見本と同じ向き・細かさの縞を探します。</p>
-          <span class="mode-meta"><span>${state.durationSec === 60 ? "1分" : "3分"}</span><span>気軽に</span></span>
+          <p>見本と同じ向き・細かさの縞を、16個から探します。</p>
+          <span class="mode-meta"><span>${durationLabel()}</span><span>おすすめ</span></span>
+        </button>
+        <button class="mode-card" id="standard-mode">
+          <h2>中央の縞を見つける</h2>
+          <p>中央に縞が見えたかどうかを、1回ずつ答えます。</p>
+          <span class="mode-meta"><span>${durationLabel()}</span><span>検出課題</span></span>
         </button>
       </section>
 
@@ -124,7 +235,7 @@ function renderHome() {
             ${history.map((session) => `
               <div class="history-row">
                 <div>
-                  <strong>${session.mode === "standard" ? "標準" : `絵探し・${gameDifficultyLabel(session.gameDifficulty)}`}</strong>
+                  <strong>${session.mode === "standard" ? "中央の縞を見つける" : gameHistoryLabel(session)}</strong>
                   <span>${formatDate(session.endedAt)} / 疲労 ${session.fatigueBefore}→${session.fatigueAfter}</span>
                 </div>
                 <div class="history-score">${session.mode === "standard" ? `${session.accuracy}%` : `${session.correct}問`}</div>
@@ -147,8 +258,18 @@ function signed(value) {
   return String(value);
 }
 
-function gameDifficultyLabel(difficulty) {
-  return difficulty === "deep" ? "じっくり" : "ふつう";
+function formatShortDate(iso) {
+  return new Intl.DateTimeFormat("ja-JP", { month: "numeric", day: "numeric" }).format(new Date(iso));
+}
+
+function durationLabel() {
+  return state.durationSec === 60 ? "1分" : "3分";
+}
+
+function gameHistoryLabel(session) {
+  if (session.gameDifficulty === "deep") return "絵探し・旧設定（じっくり）";
+  if (session.gameDifficulty === "normal") return "絵探し・旧設定（ふつう）";
+  return "絵探しゲーム";
 }
 
 function beginMode(mode) {
@@ -208,20 +329,10 @@ function renderModeSetup(mode) {
         <span></span>
       </header>
       <section class="setup-panel">
-        <h1>${mode === "standard" ? "縞が見えた順番を答える" : "見本と同じ縞を探す"}</h1>
+        <h1>${mode === "standard" ? "中央の縞を見つける" : "見本と同じ縞を探す"}</h1>
         <p class="lede">${mode === "standard"
-          ? "画面から約40cm離れ、2回の表示のうち中央に薄い縞があった方を選びます。"
-          : "画面から約40cm離れ、見本と同じ向き・細かさの縞をタップします。"}</p>
-        ${mode === "game" ? `
-          <div class="settings-row game-difficulty-row">
-            <h3>難易度</h3>
-            <div class="option-row" aria-label="絵探しゲームの難易度">
-              <button class="option-button ${state.gameDifficulty === "normal" ? "selected" : ""}" data-game-difficulty="normal">ふつう</button>
-              <button class="option-button ${state.gameDifficulty === "deep" ? "selected" : ""}" data-game-difficulty="deep">じっくり</button>
-            </div>
-            <p class="helper">${state.gameDifficulty === "deep" ? "細かく近い縞を、じっくり見比べます。" : "向きと細かさを見比べる、16択です。"}</p>
-          </div>
-        ` : ""}
+          ? "画面から約40cm離れ、中央だけを見ます。縞が見えたか、出なかったかを答えます。"
+          : "画面から約40cm離れ、見本と同じ向き・細かさの縞をタップします。見やすい16択です。"}</p>
         <div class="option-row">
           <button class="option-button ${state.durationSec === 60 ? "selected" : ""}" data-duration="60">1分</button>
           <button class="option-button ${state.durationSec === 180 ? "selected" : ""}" data-duration="180">3分</button>
@@ -242,13 +353,6 @@ function renderModeSetup(mode) {
       renderModeSetup(mode);
     });
   });
-  document.querySelectorAll("[data-game-difficulty]").forEach((button) => {
-    button.addEventListener("click", () => {
-      state.gameDifficulty = button.dataset.gameDifficulty;
-      saveState();
-      renderModeSetup(mode);
-    });
-  });
   document.querySelector("#setup-next").addEventListener("click", () => beginMode(mode));
 }
 
@@ -258,13 +362,16 @@ function startStandard(draft) {
   let timeoutIds = [];
   let running = true;
   let awaitingAnswer = false;
-  let targetInterval = 1;
+  let targetPresent = false;
   let trials = 0;
   let correct = 0;
   let correctStreak = 0;
   let contrast = state.contrast;
   let trialStart = 0;
   const reactionTimes = [];
+  let isPractice = !state.standardTutorialCompleted;
+  let practiceTrials = 0;
+  const practiceSequence = [true, false, true];
 
   setScreen(`
     <main class="training-shell">
@@ -276,14 +383,17 @@ function startStandard(draft) {
       <section class="trial-stage">
         <canvas id="stimulus-canvas" aria-label="ガボール刺激"></canvas>
         <div class="stage-message" id="stage-message">
-          <div><strong>中央を見ます</strong><span>どちらに薄い縞が出たか答えてください</span></div>
+          <div>
+            <strong>${isPractice ? "最初に3問、練習します" : "中央だけを見ます"}</strong>
+            <span>${isPractice ? "中央に縞が見えたかを、下の2択で答えます。" : "縞が見えたか、出なかったかを答えます。"}</span>
+          </div>
         </div>
       </section>
       <footer class="answer-area">
         <div class="prompt" id="prompt">準備ができたら開始</div>
         <div class="choices">
-          <button class="choice-button" id="choice-1" disabled>1回目</button>
-          <button class="choice-button" id="choice-2" disabled>2回目</button>
+          <button class="choice-button" id="choice-seen" disabled>縞が見えた</button>
+          <button class="choice-button" id="choice-absent" disabled>出なかった</button>
         </div>
       </footer>
     </main>
@@ -292,28 +402,24 @@ function startStandard(draft) {
   const canvas = document.querySelector("#stimulus-canvas");
   const message = document.querySelector("#stage-message");
   const prompt = document.querySelector("#prompt");
-  const choice1 = document.querySelector("#choice-1");
-  const choice2 = document.querySelector("#choice-2");
+  const choiceSeen = document.querySelector("#choice-seen");
+  const choiceAbsent = document.querySelector("#choice-absent");
   const ctx = prepareCanvas(canvas);
   drawNeutral(ctx, canvas);
 
   const startButton = document.createElement("button");
   startButton.className = "primary-button";
-  startButton.textContent = "開始";
+  startButton.textContent = isPractice ? "練習を始める" : "開始";
   startButton.style.marginTop = "18px";
   message.querySelector("div").append(startButton);
   startButton.addEventListener("click", () => {
     message.hidden = true;
-    timerId = window.setInterval(() => {
-      remaining -= 1;
-      document.querySelector("#timer").textContent = formatTimer(remaining);
-      if (remaining <= 0) finish();
-    }, 1000);
-    runTrial();
+    if (isPractice) runTrial();
+    else startTimedSession();
   }, { once: true });
 
-  choice1.addEventListener("click", () => answer(1));
-  choice2.addEventListener("click", () => answer(2));
+  choiceSeen.addEventListener("click", () => answer(true));
+  choiceAbsent.addEventListener("click", () => answer(false));
   document.querySelector("#quit-button").addEventListener("click", () => {
     cleanup();
     renderHome();
@@ -322,36 +428,45 @@ function startStandard(draft) {
   function runTrial() {
     if (!running) return;
     awaitingAnswer = false;
-    choice1.disabled = true;
-    choice2.disabled = true;
-    targetInterval = Math.random() < 0.5 ? 1 : 2;
+    choiceSeen.disabled = true;
+    choiceAbsent.disabled = true;
+    targetPresent = isPractice ? practiceSequence[practiceTrials] : Math.random() < 0.5;
     const spatialFrequency = [2, 4, 6][Math.floor(Math.random() * 3)];
     const orientation = [0, 45, 90, 135][Math.floor(Math.random() * 4)];
     const trial = { spatialFrequency, orientation };
 
-    prompt.textContent = "1回目";
+    prompt.textContent = "中央の十字を見ます";
     drawFixation(ctx, canvas);
-    schedule(() => drawStandardFrame(ctx, canvas, trial, targetInterval === 1, contrast), 350);
-    schedule(() => drawMask(ctx, canvas), 530);
-    schedule(() => drawFixation(ctx, canvas), 750);
-    schedule(() => { prompt.textContent = "2回目"; }, 900);
-    schedule(() => drawStandardFrame(ctx, canvas, trial, targetInterval === 2, contrast), 1080);
-    schedule(() => drawMask(ctx, canvas), 1260);
+    schedule(() => drawStandardFrame(ctx, canvas, trial, targetPresent, isPractice ? 0.32 : contrast), 500);
     schedule(() => {
       drawFixation(ctx, canvas);
-      prompt.textContent = "どちらに見えましたか？";
+      prompt.textContent = "中央に縞は見えましたか？";
       awaitingAnswer = true;
       trialStart = performance.now();
-      choice1.disabled = false;
-      choice2.disabled = false;
-    }, 1480);
+      choiceSeen.disabled = false;
+      choiceAbsent.disabled = false;
+    }, 1000);
   }
 
   function answer(selected) {
     if (!awaitingAnswer || !running) return;
     awaitingAnswer = false;
+    const isCorrect = selected === targetPresent;
+    choiceSeen.disabled = true;
+    choiceAbsent.disabled = true;
+    if (isPractice) {
+      practiceTrials += 1;
+      prompt.textContent = isCorrect ? "正解です" : targetPresent ? "縞が出ていました" : "今回は出ていませんでした";
+      if (navigator.vibrate) navigator.vibrate(isCorrect ? 20 : [20, 40, 20]);
+      if (practiceTrials >= 3) {
+        schedule(showTimedStart, 650);
+      } else {
+        schedule(runTrial, 650);
+      }
+      return;
+    }
+
     trials += 1;
-    const isCorrect = selected === targetInterval;
     reactionTimes.push(performance.now() - trialStart);
     if (isCorrect) {
       correct += 1;
@@ -364,12 +479,33 @@ function startStandard(draft) {
     } else {
       contrast = Math.min(0.45, contrast * 1.2);
       correctStreak = 0;
-      prompt.textContent = `${targetInterval}回目でした`;
+      prompt.textContent = targetPresent ? "縞が出ていました" : "今回は出ていませんでした";
     }
-    choice1.disabled = true;
-    choice2.disabled = true;
     if (navigator.vibrate) navigator.vibrate(isCorrect ? 20 : [20, 40, 20]);
-    schedule(runTrial, 480);
+    schedule(runTrial, 500);
+  }
+
+  function showTimedStart() {
+    if (!running) return;
+    isPractice = false;
+    state.standardTutorialCompleted = true;
+    saveState();
+    drawNeutral(ctx, canvas);
+    message.innerHTML = `<div><strong>練習は完了です</strong><span>ここから${durationLabel()}、中央だけを見て答えます。</span><button class="primary-button" id="standard-start-button" style="margin-top:18px">本番を始める</button></div>`;
+    message.hidden = false;
+    document.querySelector("#standard-start-button").addEventListener("click", () => {
+      message.hidden = true;
+      startTimedSession();
+    }, { once: true });
+  }
+
+  function startTimedSession() {
+    timerId = window.setInterval(() => {
+      remaining -= 1;
+      document.querySelector("#timer").textContent = formatTimer(remaining);
+      if (remaining <= 0) finish();
+    }, 1000);
+    runTrial();
   }
 
   function finish() {
@@ -408,7 +544,6 @@ function startStandard(draft) {
 function startGame(draft) {
   const columns = 4;
   const rows = 4;
-  const difficulty = state.gameDifficulty;
   let remaining = state.durationSec;
   let timerId;
   let running = true;
@@ -428,7 +563,7 @@ function startGame(draft) {
       </header>
       <section class="game-instruction">
         <canvas class="sample-canvas" id="sample-canvas" width="128" height="128" aria-label="見本"></canvas>
-        <div><strong>同じ縞を探す</strong><br><span class="helper">${gameDifficultyLabel(difficulty)}・16択</span></div>
+        <div><strong>同じ縞を探す</strong><br><span class="helper">見やすい16択</span></div>
         <div class="game-score"><span id="game-score">0</span><br><span class="helper">正解</span></div>
       </section>
       <section class="game-stage">
@@ -456,7 +591,7 @@ function startGame(draft) {
 
   function drawRound() {
     const orientations = [0, 45, 90, 135];
-    const frequencies = difficulty === "deep" ? [4, 5, 6, 7] : [2, 4, 6, 8];
+    const frequencies = [2, 3, 4, 5];
     const combinations = orientations.flatMap((orientation) =>
       frequencies.map((spatialFrequency) => ({
         orientation,
@@ -516,7 +651,6 @@ function startGame(draft) {
       attempts,
       accuracy: attempts ? Math.round((correct / attempts) * 100) : 0,
       durationSec: state.durationSec,
-      gameDifficulty: difficulty,
       endedAt: new Date().toISOString(),
     });
   }
@@ -605,7 +739,7 @@ function renderRest(result) {
       completed = true;
       const button = document.querySelector("#finish-button");
       button.disabled = false;
-      button.textContent = "今日のケアを完了";
+      button.textContent = "記録を完了";
     }
   }, 1000);
 
@@ -615,6 +749,7 @@ function renderRest(result) {
     state.sessions.unshift(result);
     state.sessions = state.sessions.slice(0, 90);
     saveState();
+    queueNudgeCompletion();
     renderHome();
   });
 
@@ -677,11 +812,22 @@ function renderSettings() {
           <p>${state.calibrationPxPerMm ? "校正済み。端末を変えた場合は再設定してください。" : "未設定です。"}</p>
         </button>
         <div class="settings-row">
-          <h3>標準の時間</h3>
+          <h3>トレーニング時間</h3>
           <div class="option-row">
             <button class="option-button ${state.durationSec === 60 ? "selected" : ""}" data-duration="60">1分</button>
             <button class="option-button ${state.durationSec === 180 ? "selected" : ""}" data-duration="180">3分</button>
           </div>
+        </div>
+        <div class="settings-row" id="nudge-settings">
+          <h3>継続の通知</h3>
+          <p>前回の完了から48時間あいたら、選んだ時刻に1回だけお知らせします。22:00から06:30には通知しません。</p>
+          <div class="option-row nudge-controls">
+            <select class="option-button nudge-time-select" id="nudge-time" aria-label="通知する時刻">
+              ${nudgeTimeOptions()}
+            </select>
+            <button class="option-button" id="nudge-toggle">${state.nudge.enabled ? "通知をオフ" : "通知を設定"}</button>
+          </div>
+          <p class="helper" id="nudge-status">通知の利用可否を確認しています。</p>
         </div>
         <div class="settings-row">
           <h3>このアプリについて</h3>
@@ -689,7 +835,7 @@ function renderSettings() {
         </div>
         <button class="mode-card danger-button" id="clear-button">
           <h3>記録を消去</h3>
-          <p>この端末に保存された履歴と難易度を削除します。</p>
+          <p>この端末に保存された履歴と設定を削除します。</p>
         </button>
       </section>
     </main>
@@ -704,6 +850,56 @@ function renderSettings() {
       renderSettings();
     });
   });
+  const nudgeTime = document.querySelector("#nudge-time");
+  const nudgeToggle = document.querySelector("#nudge-toggle");
+  const nudgeStatus = document.querySelector("#nudge-status");
+  nudgeTime.addEventListener("change", async () => {
+    state.nudge.preferredMinute = Number(nudgeTime.value);
+    saveState();
+    if (!state.nudge.enabled) return;
+    try {
+      await saveNudgePreferences();
+      nudgeStatus.textContent = `${nudgeTimeLabel(state.nudge.preferredMinute)}に、48時間後の通知を確認します。`;
+    } catch {
+      nudgeStatus.textContent = "時刻を保存できませんでした。通信を確認して、もう一度お試しください。";
+    }
+  });
+  nudgeToggle.addEventListener("click", async () => {
+    nudgeToggle.disabled = true;
+    try {
+      if (state.nudge.enabled) {
+        await nudgeRequest("preferences", {
+          method: "POST",
+          body: JSON.stringify({
+            deviceId: getNudgeDeviceId(),
+            enabled: false,
+            preferredMinute: state.nudge.preferredMinute,
+          }),
+        });
+        state.nudge.enabled = false;
+        saveState();
+        navigator.clearAppBadge?.();
+        nudgeToggle.textContent = "通知を設定";
+        nudgeStatus.textContent = "継続の通知をオフにしました。";
+      } else {
+        await enableNudge();
+        nudgeToggle.textContent = "通知をオフ";
+        nudgeStatus.textContent = `${nudgeTimeLabel(state.nudge.preferredMinute)}に、48時間後の通知を確認します。`;
+      }
+    } catch (error) {
+      const message = error.message === "home_screen_required"
+        ? "iPhoneでは、Safariの共有メニューからホーム画面へ追加してから設定してください。"
+        : error.message === "permission_denied"
+          ? "通知が許可されませんでした。iPhoneの設定から通知を許可できます。"
+          : error.message === "push_unsupported"
+            ? "この環境では通知を利用できません。"
+            : "通知の設定を完了できませんでした。Cloudflareの通知設定と通信を確認してください。";
+      nudgeStatus.textContent = message;
+    } finally {
+      nudgeToggle.disabled = false;
+    }
+  });
+  void refreshNudgeStatus(nudgeToggle, nudgeTime, nudgeStatus);
   document.querySelector("#clear-button").addEventListener("click", () => {
     if (window.confirm("記録と設定をすべて消去しますか？")) {
       state = { ...DEFAULT_STATE, sessions: [] };
@@ -711,6 +907,24 @@ function renderSettings() {
       renderHome();
     }
   });
+}
+
+async function refreshNudgeStatus(toggle, timeSelect, status) {
+  try {
+    const config = await fetch(`${NUDGE_API}/config`, { cache: "no-store" }).then((response) => response.json());
+    if (!config.available) throw new Error("unavailable");
+    if (state.nudge.enabled) {
+      status.textContent = `${nudgeTimeLabel(state.nudge.preferredMinute)}に、48時間後の通知を確認します。`;
+    } else if (!isStandaloneApp()) {
+      status.textContent = "iPhoneでは、ホーム画面へ追加した後に通知を設定できます。";
+    } else {
+      status.textContent = "通知は48時間以上あいたときに、1回だけ届きます。";
+    }
+  } catch {
+    toggle.disabled = true;
+    timeSelect.disabled = true;
+    status.textContent = "通知は公開後のCloudflare設定が完了すると利用できます。";
+  }
 }
 
 function prepareCanvas(canvas) {
@@ -755,20 +969,6 @@ function drawStandardFrame(ctx, canvas, trial, hasTarget, contrast) {
   const sigma = Math.max(10, periodPx * 1.1);
   const centerX = width / 2;
   const centerY = height / 2;
-  const flankDistance = sigma * 3.1;
-
-  drawGabor(ctx, centerX, centerY - flankDistance, {
-    ...trial,
-    periodPx,
-    sigma,
-    contrast: 0.55,
-  });
-  drawGabor(ctx, centerX, centerY + flankDistance, {
-    ...trial,
-    periodPx,
-    sigma,
-    contrast: 0.55,
-  });
   if (hasTarget) {
     drawGabor(ctx, centerX, centerY, {
       ...trial,
@@ -820,18 +1020,6 @@ function drawGabor(ctx, cx, cy, options) {
     }
   }
   ctx.putImageData(image, Math.round(deviceCx - radius), Math.round(deviceCy - radius));
-}
-
-function drawMask(ctx, canvas) {
-  const { width, height } = canvasCssSize(canvas);
-  const block = 5;
-  for (let y = 0; y < height; y += block) {
-    for (let x = 0; x < width; x += block) {
-      const value = 108 + Math.floor(Math.random() * 58);
-      ctx.fillStyle = `rgb(${value},${value},${value})`;
-      ctx.fillRect(x, y, block, block);
-    }
-  }
 }
 
 function drawSample(canvas, patch) {
@@ -909,13 +1097,20 @@ function formatTimer(seconds) {
   return `${minutes}:${rest}`;
 }
 
-window.addEventListener("hashchange", () => {
+function handleHashRoute() {
   if (location.hash === "#standard") renderModeSetup("standard");
   else if (location.hash === "#game") renderModeSetup("game");
-});
+  else if (location.hash === "#nudge") beginMode("game");
+}
+
+window.addEventListener("hashchange", handleHashRoute);
 
 if ("serviceWorker" in navigator) {
-  window.addEventListener("load", () => navigator.serviceWorker.register("./sw.js"));
+  window.addEventListener("load", async () => {
+    await navigator.serviceWorker.register("./sw.js");
+    void flushPendingNudgeCompletion();
+  });
 }
 
 renderHome();
+handleHashRoute();

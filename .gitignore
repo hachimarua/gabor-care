@@ -1,2 +1,3 @@
 dist/
+workers/nudge/node_modules/
 .DS_Store
