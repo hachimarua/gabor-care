@@ -1,8 +1,6 @@
 const app = document.querySelector("#app");
 
 const STORAGE_KEY = "gabor-care-state-v1";
-const NUDGE_API = "https://gabor-care-nudge.hachiotsssg.workers.dev/api/nudge";
-const DEFAULT_PREFERRED_NUDGE_MINUTE = 18 * 60 + 30;
 const DEFAULT_STATE = {
   calibrationPxPerMm: null,
   distanceMm: 400,
@@ -11,13 +9,6 @@ const DEFAULT_STATE = {
   contrast: 0.18,
   standardTrainingVersion: 2,
   standardTutorialCompleted: false,
-  nudge: {
-    deviceId: null,
-    token: null,
-    enabled: false,
-    preferredMinute: DEFAULT_PREFERRED_NUDGE_MINUTE,
-    pendingCompletedAt: null,
-  },
   sessions: [],
 };
 
@@ -27,12 +18,13 @@ let activeCleanup = null;
 function loadState() {
   try {
     const stored = JSON.parse(localStorage.getItem(STORAGE_KEY) || "{}");
+    const hadLegacyNudge = Object.hasOwn(stored, "nudge");
+    delete stored.nudge;
     const isLegacyStandardTraining = stored.standardTrainingVersion !== 2;
     const isLegacyDuration = stored.durationVersion !== 2;
-    return {
+    const loadedState = {
       ...DEFAULT_STATE,
       ...stored,
-      nudge: { ...DEFAULT_STATE.nudge, ...(stored.nudge || {}) },
       durationSec: isLegacyDuration ? DEFAULT_STATE.durationSec : stored.durationSec ?? DEFAULT_STATE.durationSec,
       durationVersion: 2,
       // The old task used a different stimulus, so its adaptive contrast cannot
@@ -41,6 +33,14 @@ function loadState() {
       standardTrainingVersion: 2,
       standardTutorialCompleted: isLegacyStandardTraining ? false : Boolean(stored.standardTutorialCompleted),
     };
+    if (hadLegacyNudge) {
+      try {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(loadedState));
+      } catch {
+        // Keep the rest of the saved training state usable if storage is unavailable.
+      }
+    }
+    return loadedState;
   } catch {
     return { ...DEFAULT_STATE };
   }
@@ -50,107 +50,24 @@ function saveState() {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
 }
 
-function getNudgeDeviceId() {
-  if (!state.nudge.deviceId) {
-    state.nudge.deviceId = crypto.randomUUID();
-    saveState();
-  }
-  return state.nudge.deviceId;
-}
-
-function isStandaloneApp() {
-  return window.matchMedia("(display-mode: standalone)").matches || window.navigator.standalone === true;
-}
-
-function nudgeTimeLabel(minute) {
-  return `${String(Math.floor(minute / 60)).padStart(2, "0")}:${String(minute % 60).padStart(2, "0")}`;
-}
-
-function nudgeTimeOptions() {
-  const options = [];
-  for (let minute = 6 * 60 + 30; minute <= 21 * 60 + 30; minute += 30) {
-    options.push(`<option value="${minute}" ${state.nudge.preferredMinute === minute ? "selected" : ""}>${nudgeTimeLabel(minute)}</option>`);
-  }
-  return options.join("");
-}
-
-function base64UrlToUint8Array(value) {
-  const padded = value.replaceAll("-", "+").replaceAll("_", "/") + "=".repeat((4 - value.length % 4) % 4);
-  const binary = atob(padded);
-  return Uint8Array.from(binary, (character) => character.charCodeAt(0));
-}
-
-async function nudgeRequest(path, options = {}) {
-  const headers = { "content-type": "application/json", ...(options.headers || {}) };
-  if (state.nudge.token) headers["x-device-token"] = state.nudge.token;
-  const response = await fetch(`${NUDGE_API}/${path}`, { ...options, headers });
-  if (!response.ok) throw new Error(`nudge_${response.status}`);
-  return response.json();
-}
-
-async function enableNudge() {
-  if (!isStandaloneApp()) throw new Error("home_screen_required");
-  if (!("serviceWorker" in navigator) || !("PushManager" in window) || !("Notification" in window)) {
-    throw new Error("push_unsupported");
-  }
-  const config = await fetch(`${NUDGE_API}/config`, { cache: "no-store" }).then((response) => response.json());
-  if (!config.available || !config.publicKey) throw new Error("nudge_unavailable");
-  const permission = await Notification.requestPermission();
-  if (permission !== "granted") throw new Error("permission_denied");
-
-  const registration = await navigator.serviceWorker.ready;
-  const subscription = await registration.pushManager.getSubscription()
-    || await registration.pushManager.subscribe({
-      userVisibleOnly: true,
-      applicationServerKey: base64UrlToUint8Array(config.publicKey),
-    });
-  const result = await nudgeRequest("subscribe", {
-    method: "POST",
-    body: JSON.stringify({
-      deviceId: getNudgeDeviceId(),
-      subscription: subscription.toJSON(),
-      preferredMinute: state.nudge.preferredMinute,
-    }),
-    headers: {},
-  });
-  state.nudge.token = result.token;
-  state.nudge.enabled = true;
-  saveState();
-  await flushPendingNudgeCompletion();
-}
-
-async function saveNudgePreferences() {
-  if (!state.nudge.token) return;
-  await nudgeRequest("preferences", {
-    method: "POST",
-    body: JSON.stringify({
-      deviceId: getNudgeDeviceId(),
-      enabled: state.nudge.enabled,
-      preferredMinute: state.nudge.preferredMinute,
-    }),
-  });
-}
-
-async function flushPendingNudgeCompletion() {
-  const completedAt = state.nudge.pendingCompletedAt;
-  if (!state.nudge.enabled || !state.nudge.token || !completedAt) return;
+async function retireLegacyNudgeSubscription(registration) {
   try {
-    await nudgeRequest("complete", {
-      method: "POST",
-      body: JSON.stringify({ deviceId: getNudgeDeviceId(), completedAt }),
-    });
-    state.nudge.pendingCompletedAt = null;
-    saveState();
-    navigator.clearAppBadge?.();
+    const subscription = await registration.pushManager?.getSubscription();
+    if (subscription) await subscription.unsubscribe();
   } catch {
-    // Offline completion remains on this device and is sent on the next launch.
+    // Notification cleanup must not prevent the training app from opening.
   }
-}
-
-function queueNudgeCompletion() {
-  state.nudge.pendingCompletedAt = new Date().toISOString();
-  saveState();
-  void flushPendingNudgeCompletion();
+  try {
+    const notifications = await registration.getNotifications?.({ tag: "gabor-care-nudge" });
+    notifications?.forEach((notification) => notification.close());
+  } catch {
+    // Some browsers do not expose notification cleanup.
+  }
+  try {
+    await navigator.clearAppBadge?.();
+  } catch {
+    // Badge cleanup is optional.
+  }
 }
 
 function setScreen(markup, cleanup = null) {
@@ -749,7 +666,6 @@ function renderRest(result) {
     state.sessions.unshift(result);
     state.sessions = state.sessions.slice(0, 90);
     saveState();
-    queueNudgeCompletion();
     renderHome();
   });
 
@@ -818,17 +734,6 @@ function renderSettings() {
             <button class="option-button ${state.durationSec === 180 ? "selected" : ""}" data-duration="180">3分</button>
           </div>
         </div>
-        <div class="settings-row" id="nudge-settings">
-          <h3>継続の通知</h3>
-          <p>前回の完了から48時間あいたら、選んだ時刻に1回だけお知らせします。22:00から06:30には通知しません。</p>
-          <div class="option-row nudge-controls">
-            <select class="option-button nudge-time-select" id="nudge-time" aria-label="通知する時刻">
-              ${nudgeTimeOptions()}
-            </select>
-            <button class="option-button" id="nudge-toggle">${state.nudge.enabled ? "通知をオフ" : "通知を設定"}</button>
-          </div>
-          <p class="helper" id="nudge-status">通知の利用可否を確認しています。</p>
-        </div>
         <div class="settings-row">
           <h3>このアプリについて</h3>
           <p>ガボール刺激による知覚学習と、短時間の遠方休憩を支援する個人用ツールです。医療機器や視力検査ではありません。</p>
@@ -850,56 +755,6 @@ function renderSettings() {
       renderSettings();
     });
   });
-  const nudgeTime = document.querySelector("#nudge-time");
-  const nudgeToggle = document.querySelector("#nudge-toggle");
-  const nudgeStatus = document.querySelector("#nudge-status");
-  nudgeTime.addEventListener("change", async () => {
-    state.nudge.preferredMinute = Number(nudgeTime.value);
-    saveState();
-    if (!state.nudge.enabled) return;
-    try {
-      await saveNudgePreferences();
-      nudgeStatus.textContent = `${nudgeTimeLabel(state.nudge.preferredMinute)}に、48時間後の通知を確認します。`;
-    } catch {
-      nudgeStatus.textContent = "時刻を保存できませんでした。通信を確認して、もう一度お試しください。";
-    }
-  });
-  nudgeToggle.addEventListener("click", async () => {
-    nudgeToggle.disabled = true;
-    try {
-      if (state.nudge.enabled) {
-        await nudgeRequest("preferences", {
-          method: "POST",
-          body: JSON.stringify({
-            deviceId: getNudgeDeviceId(),
-            enabled: false,
-            preferredMinute: state.nudge.preferredMinute,
-          }),
-        });
-        state.nudge.enabled = false;
-        saveState();
-        navigator.clearAppBadge?.();
-        nudgeToggle.textContent = "通知を設定";
-        nudgeStatus.textContent = "継続の通知をオフにしました。";
-      } else {
-        await enableNudge();
-        nudgeToggle.textContent = "通知をオフ";
-        nudgeStatus.textContent = `${nudgeTimeLabel(state.nudge.preferredMinute)}に、48時間後の通知を確認します。`;
-      }
-    } catch (error) {
-      const message = error.message === "home_screen_required"
-        ? "iPhoneでは、Safariの共有メニューからホーム画面へ追加してから設定してください。"
-        : error.message === "permission_denied"
-          ? "通知が許可されませんでした。iPhoneの設定から通知を許可できます。"
-          : error.message === "push_unsupported"
-            ? "この環境では通知を利用できません。"
-            : "通知の設定を完了できませんでした。Cloudflareの通知設定と通信を確認してください。";
-      nudgeStatus.textContent = message;
-    } finally {
-      nudgeToggle.disabled = false;
-    }
-  });
-  void refreshNudgeStatus(nudgeToggle, nudgeTime, nudgeStatus);
   document.querySelector("#clear-button").addEventListener("click", () => {
     if (window.confirm("記録と設定をすべて消去しますか？")) {
       state = { ...DEFAULT_STATE, sessions: [] };
@@ -907,24 +762,6 @@ function renderSettings() {
       renderHome();
     }
   });
-}
-
-async function refreshNudgeStatus(toggle, timeSelect, status) {
-  try {
-    const config = await fetch(`${NUDGE_API}/config`, { cache: "no-store" }).then((response) => response.json());
-    if (!config.available) throw new Error("unavailable");
-    if (state.nudge.enabled) {
-      status.textContent = `${nudgeTimeLabel(state.nudge.preferredMinute)}に、48時間後の通知を確認します。`;
-    } else if (!isStandaloneApp()) {
-      status.textContent = "iPhoneでは、ホーム画面へ追加した後に通知を設定できます。";
-    } else {
-      status.textContent = "通知は48時間以上あいたときに、1回だけ届きます。";
-    }
-  } catch {
-    toggle.disabled = true;
-    timeSelect.disabled = true;
-    status.textContent = "通知は公開後のCloudflare設定が完了すると利用できます。";
-  }
 }
 
 function prepareCanvas(canvas) {
@@ -1100,7 +937,6 @@ function formatTimer(seconds) {
 function handleHashRoute() {
   if (location.hash === "#standard") renderModeSetup("standard");
   else if (location.hash === "#game") renderModeSetup("game");
-  else if (location.hash === "#nudge") beginMode("game");
 }
 
 window.addEventListener("hashchange", handleHashRoute);
@@ -1108,7 +944,9 @@ window.addEventListener("hashchange", handleHashRoute);
 if ("serviceWorker" in navigator) {
   window.addEventListener("load", async () => {
     await navigator.serviceWorker.register("./sw.js");
-    void flushPendingNudgeCompletion();
+    void navigator.serviceWorker.ready
+      .then(retireLegacyNudgeSubscription)
+      .catch(() => {});
   });
 }
 
