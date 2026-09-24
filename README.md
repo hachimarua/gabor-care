@@ -16,7 +16,6 @@ iPhoneのホーム画面から使う、個人用のガボール刺激トレー�
 - 終了後20秒の遠方視休憩
 - 端末内履歴保存
 - オフライン対応
-- 前回完了から48時間後に1回だけ知らせる継続通知（Cloudflare設定後）
 
 ## ローカル確認
 
@@ -24,7 +23,6 @@ iPhoneのホーム画面から使う、個人用のガボール刺激トレー�
 npm run verify
 npm run build
 npm run serve
-npm run nudge:check
 ```
 
 ブラウザで `http://localhost:4173` を開きます。
@@ -35,8 +33,6 @@ npm run nudge:check
 - Build command: `npm run build`
 - Build output directory: `dist`
 - Root directory: 空欄
-
-継続通知を有効にする追加設定は、[通知のセットアップ](docs/03_nudge_notifications.md)を参照する。通知先、匿名の端末識別子、最後の完了日時だけをCloudflare D1に保存し、疲労度・成績・問題内容は送信しない。
 
 ## iPhone導入に必要な次の手順
 

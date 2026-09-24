@@ -495,15 +495,6 @@ h3 {
   opacity: 0.45;
 }
 
-.nudge-controls {
-  margin-top: 12px;
-}
-
-.nudge-time-select {
-  min-height: 44px;
-  padding: 0 12px;
-}
-
 .game-instruction {
   display: flex;
   align-items: center;
