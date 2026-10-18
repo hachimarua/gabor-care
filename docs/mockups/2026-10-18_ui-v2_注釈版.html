@@ -115,6 +115,63 @@ button{font:inherit;color:inherit}
 .tag{display:inline-block;padding:0 var(--sp-2);margin-right:var(--sp-2);border-radius:999px;background:var(--accent-soft);color:var(--ink);font-size:var(--text-meta)}
 .footnote{margin:auto var(--sp-5) var(--sp-5);padding-top:var(--sp-4);border-top:1px solid var(--line);color:var(--ink-faint);font-size:var(--text-sub);line-height:1.6}
 
+/* ── 1 ホーム（v2.1 改訂：3案） ── */
+.today{color:var(--ink-soft);font-size:var(--text-meta);font-weight:600;letter-spacing:.02em}
+.more-btn svg{fill:currentColor}
+.week{display:grid;grid-template-columns:repeat(7,1fr);list-style:none;margin:0;padding:0}
+.week .d{display:flex;flex-direction:column;align-items:center;gap:6px;color:var(--ink-faint);font-size:var(--text-meta)}
+.week i{width:10px;height:10px;border-radius:50%;background:var(--surface-2)}
+.week .done i{background:var(--accent)}
+.week .today span{color:var(--ink);font-weight:700}
+.week .today i{background:transparent;box-shadow:inset 0 0 0 2px var(--accent)}
+.starts{display:grid;gap:var(--sp-3)}
+.start{
+  display:flex;align-items:center;justify-content:space-between;
+  width:100%;min-height:60px;padding:0 var(--sp-5);
+  border:0;border-radius:20px;cursor:pointer;
+  background:var(--surface);color:var(--ink);font-size:var(--text-h3);font-weight:700;
+  transition:transform var(--dur) var(--ease),background-color var(--dur) var(--ease);
+}
+.start:active{transform:scale(.98)}
+.start--lead{min-height:80px;background:var(--accent);color:#fff;font-size:26px;letter-spacing:.02em}
+.start-arrow{font-family:var(--font-num);font-weight:400;opacity:.75;transition:transform 420ms var(--ease)}
+.start--lead:hover .start-arrow{transform:translateX(4px)}
+.hero-canvas{display:block}
+
+/* 1C ステージ */
+.home-c .stage-hero{
+  position:relative;flex:none;height:470px;overflow:hidden;
+  background:var(--stage);border-radius:0 0 32px 32px;
+  transition:height 640ms var(--ease),border-radius 640ms var(--ease);
+}
+.home-c .stage-top{position:absolute;top:0;left:0;right:0;z-index:2;display:flex;align-items:center;justify-content:space-between;padding:var(--sp-3) var(--sp-3) 0 var(--sp-5);min-height:56px}
+.home-c .stage-top .today{color:#1e221c}
+.home-c .stage-top .icon-btn{color:#1e221c}
+.home-c .hero-canvas{position:absolute;left:50%;top:52%;width:300px;height:300px;transform:translate(-50%,-50%)}
+.hero-cross{position:absolute;left:50%;top:52%;transform:translate(-50%,-50%);font-size:24px;color:rgba(30,36,31,.8);opacity:0;transition:opacity 300ms var(--ease) 420ms}
+.home-c-body{display:grid;gap:var(--sp-5);padding:var(--sp-5) var(--sp-5) 0;transition:opacity 280ms var(--ease)}
+.home-c.launch .stage-hero{height:844px;border-radius:0}
+.home-c.launch .hero-cross{opacity:1}
+.home-c.launch .stage-top{opacity:0;transition:opacity 200ms}
+.home-c.launch .home-c-body{opacity:0}
+
+/* 1A 浮かぶ縞 */
+.home-top2{display:flex;align-items:center;justify-content:space-between;min-height:56px;padding:var(--sp-2) var(--sp-3) 0 var(--sp-5)}
+.hero-a{display:grid;place-items:center;height:400px;transition:transform 700ms var(--ease),opacity 500ms var(--ease)}
+.home-a .hero-canvas{width:300px;height:300px;animation:turn 120s linear infinite}
+@keyframes turn{to{transform:rotate(360deg)}}
+.home-a-body{display:grid;gap:var(--sp-5);padding:0 var(--sp-5)}
+.home-a.launch .hero-a{transform:scale(1.25);opacity:0}
+
+/* 1B 数字 */
+.tally{padding:var(--sp-6) var(--sp-5) 0}
+.tally-num{font-size:200px;font-weight:200;line-height:.9;letter-spacing:-.06em;margin-left:-10px}
+.tally-label{font-size:var(--text-h3);font-weight:700;margin:var(--sp-2) 0 var(--sp-6)}
+.tally .week{max-width:300px}
+.home-b-body{padding:var(--sp-7) var(--sp-5) 0}
+
+.home-c .history,.home-a .history,.home-b .history{padding-top:var(--sp-7)}
+
 /* ── 2 始める前の目の疲れ ── */
 .scale{display:grid;grid-template-columns:repeat(6,1fr);gap:10px;margin-top:var(--sp-6)}
 .scale-btn{
@@ -215,14 +272,118 @@ details p{padding:0 0 var(--sp-4);color:var(--ink-soft)}
 
   <div class="frames">
 
-    <!-- 1 ホーム -->
+    <!-- 1C ホーム：ステージ（推奨） -->
     <section class="frame">
-      <div class="frame-cap">1 ホーム</div>
-      <div class="phone screen-home">
-        <div class="home-top"><button class="text-btn open-backstage">使い方・設定</button></div>
-        <div class="go-list">
-          <button class="go go--lead" data-lead>絵探し<span class="go-chev">›</span></button>
-          <button class="go">中央の縞<span class="go-chev">›</span></button>
+      <div class="frame-cap">1C ホーム・ステージ（推奨）　絵探しを押すと動きを再生</div>
+      <div class="phone screen-home home-c">
+        <div class="stage-hero" data-deviation="ホームの上半分を、トレーニングと同じ灰色の面にして本物の縞を1つ動かす。開始すると、この面が広がってそのままトレーニング画面になる。最初の画面でこのアプリが何をするかを見せ、開始の前後を切れ目なくつなぐため">
+          <div class="stage-top"><span class="today num">10月18日 土曜</span><button class="icon-btn more-btn open-backstage" aria-label="使い方・設定"><svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><circle cx="5" cy="12" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="19" cy="12" r="2"/></svg></button></div>
+          <canvas class="hero-canvas" data-hero="gray"></canvas>
+          <span class="hero-cross" aria-hidden="true">+</span>
+        </div>
+        <div class="home-c-body">
+          <ol class="week" aria-label="今週">
+            <li class="d"><span>日</span><i></i></li>
+            <li class="d done"><span>月</span><i></i></li>
+            <li class="d"><span>火</span><i></i></li>
+            <li class="d done"><span>水</span><i></i></li>
+            <li class="d"><span>木</span><i></i></li>
+            <li class="d done"><span>金</span><i></i></li>
+            <li class="d today"><span>土</span><i></i></li>
+          </ol>
+          <div class="starts">
+            <button class="start start--lead launch-btn" data-lead><span>絵探し</span><span class="start-arrow" aria-hidden="true">→</span></button>
+            <button class="start start--quiet"><span>中央の縞</span><span class="start-arrow" aria-hidden="true">→</span></button>
+          </div>
+        </div>
+        <section class="history">
+          <div class="history-head">記録</div>
+          <ul class="rows">
+            <li class="row">
+              <div class="row-main"><div class="num">10/17 05:17</div><div class="meta">疲れ 2→3</div></div>
+              <div class="row-val num">12問</div>
+            </li>
+            <li class="row">
+              <div class="row-main"><div class="num">10/15 05:17</div><div class="meta"><span class="tag">中央の縞</span>疲れ 3→3</div></div>
+              <div class="row-val num">82%</div>
+            </li>
+            <li class="row">
+              <div class="row-main"><div class="num">10/13 05:17</div><div class="meta">疲れ 4→3</div></div>
+              <div class="row-val num">10問</div>
+            </li>
+          </ul>
+        </section>
+        <p class="footnote">医療機器ではありません。目の痛み・複視・急なかすみがある日は使わず、眼科を受診してください。</p>
+      </div>
+    </section>
+
+    <!-- 1A ホーム：浮かぶ縞 -->
+    <section class="frame">
+      <div class="frame-cap">1A ホーム・浮かぶ縞　絵探しを押すと動きを再生</div>
+      <div class="phone home-a">
+        <div class="home-top2"><span class="today num">10月18日 土曜</span><button class="icon-btn more-btn open-backstage" aria-label="使い方・設定"><svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><circle cx="5" cy="12" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="19" cy="12" r="2"/></svg></button></div>
+        <div class="hero-a" data-deviation="アプリの色で描いた縞を1つ、余白の中央に置いてゆっくり流す。最初の画面でこのアプリが何をするかを、文字より先に見せるため">
+          <canvas class="hero-canvas" data-hero="tint"></canvas>
+        </div>
+        <div class="home-a-body">
+          <ol class="week" aria-label="今週">
+            <li class="d"><span>日</span><i></i></li>
+            <li class="d done"><span>月</span><i></i></li>
+            <li class="d"><span>火</span><i></i></li>
+            <li class="d done"><span>水</span><i></i></li>
+            <li class="d"><span>木</span><i></i></li>
+            <li class="d done"><span>金</span><i></i></li>
+            <li class="d today"><span>土</span><i></i></li>
+          </ol>
+          <div class="starts">
+            <button class="start start--lead launch-btn" data-lead><span>絵探し</span><span class="start-arrow" aria-hidden="true">→</span></button>
+            <button class="start start--quiet"><span>中央の縞</span><span class="start-arrow" aria-hidden="true">→</span></button>
+          </div>
+        </div>
+        <section class="history">
+          <div class="history-head">記録</div>
+          <ul class="rows">
+            <li class="row">
+              <div class="row-main"><div class="num">10/17 05:17</div><div class="meta">疲れ 2→3</div></div>
+              <div class="row-val num">12問</div>
+            </li>
+            <li class="row">
+              <div class="row-main"><div class="num">10/15 05:17</div><div class="meta"><span class="tag">中央の縞</span>疲れ 3→3</div></div>
+              <div class="row-val num">82%</div>
+            </li>
+            <li class="row">
+              <div class="row-main"><div class="num">10/13 05:17</div><div class="meta">疲れ 4→3</div></div>
+              <div class="row-val num">10問</div>
+            </li>
+          </ul>
+        </section>
+        <p class="footnote">医療機器ではありません。目の痛み・複視・急なかすみがある日は使わず、眼科を受診してください。</p>
+      </div>
+    </section>
+
+    <!-- 1B ホーム：数字 -->
+    <section class="frame">
+      <div class="frame-cap">1B ホーム・数字</div>
+      <div class="phone home-b">
+        <div class="home-top2"><span class="today num">10月18日 土曜</span><button class="icon-btn more-btn open-backstage" aria-label="使い方・設定"><svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><circle cx="5" cy="12" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="19" cy="12" r="2"/></svg></button></div>
+        <div class="tally" data-deviation="今週の回数だけを極端に大きく出す。続けている量が一目で分かり、開始の動機になるため">
+          <div class="tally-num num">3</div>
+          <div class="tally-label">今週</div>
+          <ol class="week" aria-label="今週">
+            <li class="d"><span>日</span><i></i></li>
+            <li class="d done"><span>月</span><i></i></li>
+            <li class="d"><span>火</span><i></i></li>
+            <li class="d done"><span>水</span><i></i></li>
+            <li class="d"><span>木</span><i></i></li>
+            <li class="d done"><span>金</span><i></i></li>
+            <li class="d today"><span>土</span><i></i></li>
+          </ol>
+        </div>
+        <div class="home-b-body">
+          <div class="starts">
+            <button class="start start--lead launch-btn" data-lead><span>絵探し</span><span class="start-arrow" aria-hidden="true">→</span></button>
+            <button class="start start--quiet"><span>中央の縞</span><span class="start-arrow" aria-hidden="true">→</span></button>
+          </div>
         </div>
         <section class="history">
           <div class="history-head">記録</div>
@@ -611,6 +772,65 @@ document.querySelectorAll("[data-draw]").forEach((c) => {
   }
 });
 
+// ホームの縞（1A・1C）。1画素ずつ式で描く。包絡と回転座標は最初に1回だけ計算し、
+// 毎コマは位相だけ進める。30コマ/秒に間引き、画面外では止める。
+const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
+const LUT = new Float32Array(1024).map((_, i) => Math.cos(2 * Math.PI * i / 1024));
+const heroes = [...document.querySelectorAll("[data-hero]")].map((c) => {
+  const d = Math.min(2, devicePixelRatio || 1), css = c.getBoundingClientRect().width;
+  const n = Math.round(css * d); c.width = c.height = n;
+  const x = c.getContext("2d"), img = x.createImageData(n, n);
+  const sigma = n / 6.2, per = n / 6.5, th = 45 * Math.PI / 180, co = Math.cos(th), si = Math.sin(th);
+  const env = new Float32Array(n * n), xr = new Float32Array(n * n);
+  for (let y = 0; y < n; y++) for (let k = 0; k < n; k++) {
+    const dx = k - n / 2, dy = y - n / 2, i = y * n + k;
+    env[i] = Math.exp(-(dx * dx + dy * dy) / (2 * sigma * sigma));
+    xr[i] = (dx * co + dy * si) / per;
+  }
+  const tint = c.dataset.hero === "tint";
+  const bg = tint ? [235, 240, 232] : [BG, BG, BG], dark = tint ? [47, 92, 66] : [0, 0, 0], light = tint ? [252, 253, 250] : [255, 255, 255];
+  return { c, x, img, n, env, xr, tint, bg, dark, light, contrast: 0, target: tint ? 0.9 : 0.7, from: 0, t0: performance.now(), visible: true };
+});
+const ease = (t) => 1 - Math.pow(1 - Math.min(1, t), 3);
+function drawHero(h, phase) {
+  const { img, n, env, xr, bg, dark, light, contrast } = h, data = img.data;
+  for (let i = 0; i < n * n; i++) {
+    const v = env[i] * contrast * LUT[((((xr[i] + phase) % 1) + 1) % 1 * 1024) | 0];
+    const to = v < 0 ? dark : light, a = v < 0 ? -v : v, j = i * 4;
+    if (h.tint) {
+      // 地は透明にして、回転しても角が周りの文字に重ならないようにする
+      data[j] = to[0]; data[j + 1] = to[1]; data[j + 2] = to[2]; data[j + 3] = a * 255;
+    } else {
+      data[j] = data[j + 1] = data[j + 2] = BG + BG * v; data[j + 3] = 255;
+    }
+  }
+  h.x.putImageData(img, 0, 0);
+}
+const io = new IntersectionObserver((es) => es.forEach((e) => { const h = heroes.find((h) => h.c === e.target); if (h) h.visible = e.isIntersecting; }));
+heroes.forEach((h) => io.observe(h.c));
+let last = 0;
+function tick(now) {
+  if (now - last > 33) {
+    last = now;
+    heroes.forEach((h) => {
+      if (!h.visible) return;
+      h.contrast = h.from + (h.target - h.from) * ease((now - h.t0) / 1400);   // 縞が浮かび上がる
+      drawHero(h, reduce ? 0 : now / 4000);                                     // 4秒で1周期流れる
+    });
+  }
+  if (!reduce) requestAnimationFrame(tick);
+}
+if (reduce) heroes.forEach((h) => { h.contrast = h.target; drawHero(h, 0); }); else requestAnimationFrame(tick);
+function fadeHero(h, to) { h.from = h.contrast; h.target = to; h.t0 = performance.now(); }
+
+// モックだけの再生: 絵探しを押すと開始の動きを見せ、少しして元へ戻す
+document.querySelectorAll(".launch-btn").forEach((b) => b.addEventListener("click", () => {
+  const phone = b.closest(".phone"), h = heroes.find((h) => phone.contains(h.c));
+  if (!h || phone.classList.contains("launch")) return;
+  phone.classList.add("launch"); fadeHero(h, 0);                 // 面が広がり、縞は消えて十字だけ残る
+  setTimeout(() => { phone.classList.remove("launch"); fadeHero(h, h.tint ? 0.9 : 0.7); }, 2200);
+}));
+
 // 休憩の残り秒（モックでは20秒ごとに繰り返す）
 let left = 20;
 setInterval(() => { left = left <= 1 ? 20 : left - 1; document.querySelector("#rest-count").textContent = left; }, 1000);
@@ -645,7 +865,7 @@ body.anno-off .anno-pin,body.anno-off .anno-card{display:none}
 </style>
 <script>
 (function(){
-  var A = [{"n": 1, "sel": ".screen-home .go--lead", "note": "主役。説明文・バッジを外し、位置と大きさで推す"}, {"n": 2, "sel": ".screen-home .history", "note": "利用状況の3枠を廃止。1行目が前回を兼ねる。既定（絵探し）は無表記"}, {"n": 3, "sel": ".screen-home .footnote", "note": "免責は画面底に1行。全文は使い方へ"}, {"n": 4, "sel": ".screen-home .open-backstage", "note": "開く先は3タブの裏方シート"}, {"n": 5, "sel": ".screen-before .scale", "note": "スライダー → 数字ボタン11個。1タップで決まる"}, {"n": 6, "sel": ".screen-before .seg", "note": "時間の選択を準備画面からここへ。準備画面は廃止"}, {"n": 7, "sel": ".ready", "note": "「40cm・裸眼」は開始前だけ"}, {"n": 8, "sel": ".screen-answer .ask", "note": "14.4px → 17px。十字の間は無表示"}, {"n": 9, "sel": ".sample-bar", "note": "「同じ縞を探す」「見やすい16択」を外した"}, {"n": 10, "sel": ".result", "note": "結果画面の×を廃止（記録が消える操作だったため）"}, {"n": 11, "sel": ".ring", "note": "逸脱1枠。休憩中は残り時間だけを大きく"}, {"n": 12, "sel": ".cal-ctrl", "note": "−／＋で1pxずつ。px表示は外した"}, {"n": 13, "sel": ".danger-zone", "note": "取り消せない操作は64px離し、副次色の枠"}];
+  var A = [{"n": 1, "sel": ".screen-home .start--lead", "note": "主役。説明文・バッジを外し、位置と大きさで推す"}, {"n": 2, "sel": ".screen-home .history", "note": "利用状況の3枠を廃止。1行目が前回を兼ねる。既定（絵探し）は無表記"}, {"n": 3, "sel": ".screen-home .footnote", "note": "免責は画面底に1行。全文は使い方へ"}, {"n": 4, "sel": ".screen-home .open-backstage", "note": "開く先は3タブの裏方シート"}, {"n": 14, "sel": ".screen-home .stage-hero", "note": "逸脱1枠。刺激と同じ灰色の面と本物の縞。開始で全画面に広がる"}, {"n": 15, "sel": ".screen-home .week", "note": "今週の7日。済んだ日を塗る。結論は書かない"}, {"n": 5, "sel": ".screen-before .scale", "note": "スライダー → 数字ボタン11個。1タップで決まる"}, {"n": 6, "sel": ".screen-before .seg", "note": "時間の選択を準備画面からここへ。準備画面は廃止"}, {"n": 7, "sel": ".ready", "note": "「40cm・裸眼」は開始前だけ"}, {"n": 8, "sel": ".screen-answer .ask", "note": "14.4px → 17px。十字の間は無表示"}, {"n": 9, "sel": ".sample-bar", "note": "「同じ縞を探す」「見やすい16択」を外した"}, {"n": 10, "sel": ".result", "note": "結果画面の×を廃止（記録が消える操作だったため）"}, {"n": 11, "sel": ".ring", "note": "逸脱1枠。休憩中は残り時間だけを大きく"}, {"n": 12, "sel": ".cal-ctrl", "note": "−／＋で1pxずつ。px表示は外した"}, {"n": 13, "sel": ".danger-zone", "note": "取り消せない操作は64px離し、副次色の枠"}];
 
   /* ---- 色は固定せず、元画面のアクセントから導く（DESIGN.md「色の決め方」） ----
      三分割（+120°）の相手を取り、彩度・明度は据え置いて調子を揃える。
