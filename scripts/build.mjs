@@ -8,6 +8,7 @@ const files = [
   "sw.js",
   "manifest.webmanifest",
   "icons",
+  "data",
 ];
 
 await rm(outputDirectory, { force: true, recursive: true });

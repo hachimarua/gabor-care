@@ -1,0 +1,720 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<title>Gabor Care UI v2</title>
+<style>
+/* ── トークン（デザイン共通盤 v2.1 の tokens.css から。色は palette.py で
+ *    現行の色相 地H96° / アクセントH145° を継承し、明度だけ導き直した） ── */
+:root{
+  --bg:#ebf0e8;
+  --surface:#f7faf6;
+  --surface-2:#d9e2d4;
+  --line:#bdcdb3;
+  --ink:#292e25;
+  --ink-soft:#606c58;
+  --ink-faint:#7a8771;
+  --accent:#3c7052;        /* H145 S30。現行 #466b55 とほぼ同じ見え方 */
+  --accent-soft:#cedfd5;
+  --month-8:#3d6c7c;       /* 育つ図の月の色。H195・H170、アクセントと同じ調子（palette.py Sa.34） */
+  --month-9:#376f66;
+  --month-11:#387238;
+  --month-12:#4e6f36;
+  --miss:#975157;          /* 副次色。アクセントの分割補色 H355・同じ調子。誤答と取り消せない操作だけ */
+  --miss-soft:#e5d8d9;
+  --stage:#888888;         /* 刺激の背景。UIではなくデータ。パッチの背景輝度136と一致させる */
+
+  --font-jp:"Hiragino Sans","Hiragino Kaku Gothic ProN","Yu Gothic",system-ui,sans-serif;
+  --font-num:-apple-system,"SF Pro Display",system-ui,sans-serif;
+
+  --text-lead:28px;
+  --text-big:64px;
+  --text-h2:24px;
+  --text-h3:20px;
+  --text-body:17px;
+  --text-meta:13px;
+  --text-sub:12px;
+  --leading:1.7;
+  --leading-tight:1.35;
+
+  --sp-1:4px; --sp-2:8px; --sp-3:12px; --sp-4:16px; --sp-5:24px; --sp-6:40px; --sp-7:64px;
+  --radius:14px; --radius-sm:10px;
+  --dur:180ms; --ease:cubic-bezier(.2,.7,.3,1);
+}
+
+*{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{
+  margin:0;background:var(--surface-2);color:var(--ink);
+  font-family:var(--font-jp);font-size:var(--text-body);line-height:var(--leading);
+  -webkit-font-smoothing:antialiased;
+}
+h2,h3{margin:0;line-height:var(--leading-tight)}
+h2{font-size:var(--text-h2)}
+h3{font-size:var(--text-h3)}
+p{margin:0}
+button{font:inherit;color:inherit}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+@media (prefers-reduced-motion:reduce){*{transition:none !important;animation:none !important}}
+
+/* ── モックの台紙（実装しない） ── */
+.board{padding:var(--sp-6) var(--sp-4) var(--sp-7);max-width:1700px;margin:0 auto}
+.board-title{font-size:var(--text-h3);font-weight:700}
+.board-meta{color:var(--ink-soft);font-size:var(--text-meta);margin-top:var(--sp-1)}
+.frames{display:flex;flex-wrap:wrap;gap:var(--sp-6) var(--sp-5);margin-top:var(--sp-6)}
+.frame{width:min(390px,100%)}
+.frame-cap{font-size:var(--text-meta);color:var(--ink-soft);margin-bottom:var(--sp-2)}
+.phone{
+  position:relative;height:844px;overflow:auto;
+  background:var(--bg);border-radius:28px;
+  border:1px solid var(--line);
+  display:flex;flex-direction:column;
+}
+
+/* ── 共通 ── */
+.bar{display:grid;grid-template-columns:44px 1fr 44px;align-items:center;gap:var(--sp-2);min-height:56px;padding:var(--sp-2) var(--sp-3) 0}
+.bar-title{text-align:center;font-weight:700}
+.icon-btn{
+  width:44px;height:44px;min-width:44px;min-height:44px;
+  display:grid;place-items:center;border:0;border-radius:50%;
+  background:transparent;font-size:24px;cursor:pointer;
+}
+.text-btn{min-height:44px;min-width:44px;padding:0 var(--sp-3);border:0;background:transparent;color:var(--accent);font-weight:700;cursor:pointer}
+.body{flex:1;display:flex;flex-direction:column;padding:var(--sp-4) var(--sp-5) var(--sp-5)}
+.btn{
+  width:100%;min-height:56px;border:0;border-radius:var(--radius);
+  background:var(--accent);color:#fff;font-weight:700;font-size:var(--text-body);cursor:pointer;
+  transition:transform var(--dur) var(--ease),opacity var(--dur) var(--ease);
+}
+.btn:active{transform:scale(.98)}
+.btn:disabled{opacity:.4;cursor:default}
+.btn--quiet{background:transparent;color:var(--ink);border:1px solid var(--line)}
+.btn--danger{background:transparent;color:var(--miss);border:1px solid var(--miss)}
+.push-down{margin-top:auto}
+.meta{color:var(--ink-faint);font-size:var(--text-meta)}
+.num{font-family:var(--font-num);font-variant-numeric:tabular-nums}
+
+/* ── 1 ホーム ── */
+.home-top{display:flex;justify-content:flex-end;padding:var(--sp-2) var(--sp-3) 0;min-height:56px}
+.go-list{display:grid;gap:var(--sp-3);padding:var(--sp-6) var(--sp-5) 0}
+.go{
+  display:flex;align-items:center;justify-content:space-between;
+  width:100%;min-height:72px;padding:0 var(--sp-5);
+  border:1px solid var(--line);border-radius:var(--radius);
+  background:var(--surface);text-align:left;cursor:pointer;
+  font-size:var(--text-h3);font-weight:700;
+  transition:transform var(--dur) var(--ease);
+}
+.go:active{transform:scale(.98)}
+.go--lead{min-height:128px;border:0;background:var(--accent);color:#fff;font-size:28px}
+.go .go-chev{font-size:var(--text-h3);opacity:.7}
+.history{padding:var(--sp-6) var(--sp-5) 0}
+.history-head{font-size:var(--text-body);font-weight:700;color:var(--ink-soft);margin-bottom:var(--sp-2)}
+.rows{list-style:none;margin:0;padding:0}
+.row{display:flex;align-items:center;gap:var(--sp-4);padding:var(--sp-3) 0;border-bottom:1px solid var(--line)}
+.row:last-child{border-bottom:0}
+.row-main{flex:1;min-width:0}
+.row-val{flex:none;font-weight:700;font-size:var(--text-h3)}
+.tag{display:inline-block;padding:0 var(--sp-2);margin-right:var(--sp-2);border-radius:999px;background:var(--accent-soft);color:var(--ink);font-size:var(--text-meta)}
+.footnote{margin:auto var(--sp-5) var(--sp-5);padding-top:var(--sp-4);border-top:1px solid var(--line);color:var(--ink-faint);font-size:var(--text-sub);line-height:1.6}
+
+/* ── 1 ホーム（v2.1 改訂：3案） ── */
+.date-meta{color:var(--ink-soft);font-size:var(--text-meta);font-weight:600;letter-spacing:.02em}
+.home-top2{display:flex;align-items:center;justify-content:space-between;min-height:56px;padding:var(--sp-2) var(--sp-3) 0 var(--sp-5)}
+.more-btn svg{fill:currentColor}
+.week{display:grid;grid-template-columns:repeat(7,1fr);list-style:none;margin:0;padding:0}
+.week .d{display:flex;flex-direction:column;align-items:center;gap:6px;color:var(--ink-faint);font-size:var(--text-meta)}
+.week i{width:10px;height:10px;border-radius:50%;background:var(--surface-2)}
+.week .done i{background:var(--accent)}
+.week .today span{color:var(--ink);font-weight:700}
+.week .today i{background:transparent;box-shadow:inset 0 0 0 2px var(--accent)}
+.starts{display:grid;gap:var(--sp-3)}
+.start{
+  display:flex;align-items:center;justify-content:space-between;
+  width:100%;min-height:60px;padding:0 var(--sp-5);
+  border:0;border-radius:20px;cursor:pointer;
+  background:var(--surface);color:var(--ink);font-size:var(--text-h3);font-weight:700;
+  transition:transform var(--dur) var(--ease),background-color var(--dur) var(--ease);
+}
+.start:active{transform:scale(.98)}
+.start--lead{min-height:80px;background:var(--accent);color:#fff;font-size:26px;letter-spacing:.02em}
+.start-arrow{font-family:var(--font-num);font-weight:400;opacity:.75;transition:transform 420ms var(--ease)}
+.start--lead:hover .start-arrow{transform:translateX(4px)}
+
+.home-g .history{padding-top:var(--sp-7)}
+.home-body{display:grid;gap:var(--sp-5);padding:0 var(--sp-5)}
+.start-side{display:flex;align-items:center;gap:var(--sp-3)}
+.start-sub{font-size:var(--text-meta);font-weight:600;letter-spacing:.04em;opacity:.85}
+
+/* 点描の絵（1G）。色は月ごと: 8月H195・9月H170・10月H145（アクセント）・11月H120・12月H95・1月H120 と往復する。
+   palette.py（地H96°・彩度34%）で調子を揃えた。濃さは今月100%・前月72%・それ以前45%。完成した絵は全部100% */
+.grow{display:grid;place-items:center;padding:var(--sp-4) var(--sp-5) var(--sp-5)}
+.grow-svg{width:100%;max-width:320px;height:auto;overflow:visible}
+.m8{--c:var(--month-8)} .m9{--c:var(--month-9)} .m10{--c:var(--accent)} .m11{--c:var(--month-11)} .m12{--c:var(--month-12)} .m1{--c:var(--month-11)}
+.seed{fill:var(--c);fill-opacity:var(--o,1);transform-box:fill-box;transform-origin:center;animation:sprout 420ms var(--ease) both}
+.seed.last{animation:sprout-last 900ms var(--ease) both}
+.seed-next{fill:none;stroke:var(--accent);stroke-width:1.5;stroke-dasharray:3 3;animation:breathe 2.4s ease-in-out infinite}
+@keyframes sprout{from{transform:scale(0);opacity:0}}
+@keyframes sprout-last{0%{transform:scale(0);opacity:0}60%{transform:scale(1.6)}100%{transform:scale(1)}}
+@keyframes breathe{50%{opacity:.25}}
+.done-head{display:grid;gap:var(--sp-1)}
+.done-name{font-size:var(--text-h2);font-weight:700}
+.shelf{display:grid;justify-items:center;gap:var(--sp-3);padding:var(--sp-6) var(--sp-5) var(--sp-6);text-align:center}
+.shelf-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:var(--sp-2);width:100%;margin-bottom:var(--sp-5)}
+.thumb{width:100%;height:auto;fill:var(--accent);fill-opacity:.8}
+.shelf-title{font-size:var(--text-h2)}
+.shelf-next{color:var(--ink-soft)}
+.copy-ask{width:auto;min-height:48px;padding:0 var(--sp-5);margin-top:var(--sp-2)}
+.tally2{display:flex;align-items:baseline;justify-content:space-between;gap:var(--sp-3)}
+.tally2-num{font-size:40px;font-weight:700;letter-spacing:-.03em;line-height:1}
+.tally2-num small{font-size:var(--text-h3);font-weight:600;color:var(--ink-faint);letter-spacing:0}
+.tally2-sub{color:var(--ink-soft);font-size:var(--text-meta)}
+
+/* ── 2 始める前の目の疲れ ── */
+.scale{display:grid;grid-template-columns:repeat(6,1fr);gap:10px;margin-top:var(--sp-6)}
+.scale-btn{
+  min-height:56px;border:1px solid var(--line);border-radius:var(--radius-sm);
+  background:var(--surface);font-size:22px;font-weight:700;cursor:pointer;
+}
+.scale-btn.on{border-color:var(--accent);background:var(--accent);color:#fff}
+.scale-ends{display:flex;justify-content:space-between;margin-top:var(--sp-2)}
+.field{margin-top:var(--sp-6)}
+.field-label{font-weight:700;margin-bottom:var(--sp-2)}
+.seg{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.seg-btn{min-height:52px;border:1px solid var(--line);border-radius:var(--radius-sm);background:var(--surface);font-weight:700;cursor:pointer}
+.seg-btn.on{border-color:var(--accent);background:var(--accent-soft);color:var(--accent)}
+
+/* ── 3〜5 トレーニング ── */
+.tr{flex:1;display:grid;grid-template-rows:auto minmax(0,1fr) auto;background:var(--stage)}
+.tr-top{display:grid;grid-template-columns:44px 1fr 44px;align-items:center;gap:var(--sp-2);min-height:64px;padding:var(--sp-2) var(--sp-3);background:var(--surface)}
+.timer{text-align:center;font-size:var(--text-h3);font-weight:700}
+.stage{position:relative;display:grid;place-items:center;min-height:0}
+.stage canvas{display:block;width:100%;height:100%}
+.ready{
+  position:absolute;left:var(--sp-5);right:var(--sp-5);
+  padding:var(--sp-5);border-radius:var(--radius);background:var(--surface);
+}
+.ready .btn{margin-top:var(--sp-5)}
+.answer{padding:var(--sp-4) var(--sp-5) var(--sp-5);background:var(--surface)}
+.ask{text-align:center;min-height:1.7em;margin-bottom:var(--sp-3)}
+.choices{display:grid;grid-template-columns:1fr 1fr;gap:var(--sp-3)}
+.choice{min-height:72px;border:1px solid var(--line);border-radius:var(--radius);background:var(--bg);font-size:var(--text-h3);font-weight:700;cursor:pointer}
+.choice.lead-pair{font-size:var(--text-h3)}
+.tr--game{grid-template-rows:auto auto minmax(0,1fr)}
+.sample-bar{display:flex;align-items:center;gap:var(--sp-4);padding:var(--sp-3) var(--sp-5);background:var(--surface);border-top:1px solid var(--line)}
+.sample{width:76px;height:76px;flex:none;border-radius:var(--radius-sm);background:var(--stage)}
+.score{margin-left:auto;text-align:right;line-height:1.2}
+.score b{display:block;font-size:var(--text-h2)}
+
+/* ── 6 結果 ── */
+.result{font-size:var(--text-big);font-weight:800;letter-spacing:-.04em;line-height:1.1;margin-top:var(--sp-6)}
+.result-label{color:var(--ink-soft)}
+.facts{list-style:none;margin:var(--sp-6) 0 0;padding:0}
+.fact{display:flex;justify-content:space-between;align-items:baseline;padding:var(--sp-3) 0;border-bottom:1px solid var(--line)}
+.fact:last-child{border-bottom:0}
+.fact b{font-weight:700}
+
+/* ── 7 目の休憩 ── */
+.rest-say{text-align:center;margin-top:var(--sp-4)}
+.ring{position:relative;width:260px;height:260px;margin:var(--sp-7) auto}
+.ring svg{width:100%;height:100%;transform:rotate(-90deg)}
+.ring-track{fill:none;stroke:var(--surface-2);stroke-width:6}
+.ring-left{fill:none;stroke:var(--accent);stroke-width:6;stroke-linecap:round;stroke-dasharray:767;animation:drain 20s linear infinite}
+@keyframes drain{from{stroke-dashoffset:0}to{stroke-dashoffset:767}}
+.ring-count{position:absolute;inset:0;display:grid;place-items:center;font-size:72px;font-weight:700}
+
+/* ── 8 画面サイズ合わせ ── */
+.cal-line-box{display:flex;align-items:center;min-height:120px;margin-top:var(--sp-6);padding:0 var(--sp-4);border-radius:var(--radius);background:var(--surface)}
+.cal-line{height:8px;border-radius:8px;background:var(--accent)}
+.cal-ctrl{display:grid;grid-template-columns:52px 1fr 52px;gap:var(--sp-3);align-items:center;margin-top:var(--sp-5)}
+.step{width:52px;height:52px;min-height:44px;border:1px solid var(--line);border-radius:50%;background:var(--surface);font-size:24px;cursor:pointer}
+.cal-ctrl input{width:100%;min-height:44px;accent-color:var(--accent)}
+
+/* ── 9〜11 裏方シート ── */
+.sheet-scrim{position:absolute;inset:0;background:rgba(41,46,37,.32)}
+.sheet{
+  position:absolute;left:0;right:0;bottom:0;top:56px;
+  display:flex;flex-direction:column;
+  background:var(--bg);border-radius:20px 20px 0 0;
+}
+.sheet-grab{width:40px;height:5px;margin:var(--sp-2) auto 0;border-radius:3px;background:var(--line)}
+.sheet-head{display:flex;align-items:center;justify-content:space-between;padding:0 var(--sp-3) 0 var(--sp-5);min-height:52px}
+.sheet-title{font-weight:700}
+.tabs{display:grid;grid-template-columns:repeat(3,1fr);gap:var(--sp-2);margin:0 var(--sp-5);padding:var(--sp-1);border-radius:var(--radius);background:var(--surface-2)}
+.tab{min-height:44px;border:0;border-radius:var(--radius-sm);background:transparent;font-weight:700;color:var(--ink-soft);cursor:pointer}
+.tab.on{background:var(--surface);color:var(--ink)}
+.sheet-body{flex:1;overflow:auto;padding:var(--sp-5)}
+.group + .group{margin-top:var(--sp-6)}
+.group-head{font-size:var(--text-meta);color:var(--ink-faint);font-weight:700;margin-bottom:var(--sp-2)}
+.card{background:var(--surface);border-radius:var(--radius);padding:var(--sp-1) var(--sp-4)}
+.card .row{min-height:56px}
+.can{padding:var(--sp-3) 0;border-bottom:1px solid var(--line)}
+.can:last-child{border-bottom:0}
+.can b{display:block}
+.can span{color:var(--ink-soft)}
+details{border-bottom:1px solid var(--line)}
+details:last-child{border-bottom:0}
+summary{min-height:52px;display:flex;align-items:center;cursor:pointer;font-weight:700;list-style:none}
+summary::-webkit-details-marker{display:none}
+summary::after{content:"＋";margin-left:auto;color:var(--ink-faint)}
+details[open] summary::after{content:"−"}
+details p{padding:0 0 var(--sp-4);color:var(--ink-soft)}
+.danger-zone{margin-top:var(--sp-7)}
+.row .btn--quiet{width:auto;min-height:44px;padding:0 var(--sp-4)}
+</style>
+</head>
+<body>
+<div class="board">
+  <div class="board-title">Gabor Care UI v2</div>
+  <div class="board-meta">2026-10-18 ・ iPhone 390×844</div>
+
+  <div class="frames">
+
+    <!-- 1G ホーム：点描の絵・途中 -->
+    <section class="frame">
+      <div class="frame-cap">1G ホーム・点描の絵（46日目）※見本の絵。本番の5枚とは別</div>
+      <div class="phone screen-home home-g">
+        <div class="home-top2"><span class="date-meta num">10月18日 日曜</span><button class="icon-btn more-btn open-backstage" aria-label="使い方・設定"><svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><circle cx="5" cy="12" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="19" cy="12" r="2"/></svg></button></div>
+        <div class="grow" data-deviation="1日やるごとに点が1つ増え、100日で1枚の絵になる図を主画面に置く。何の絵かは書かず、点が増えるにつれて形が見えてくる。続けた日数がそのまま形になり、次の1日で何が見えるかが今日始める理由になるため">
+          <svg class="grow-svg" viewBox="0 0 320 320" role="img" aria-label="1枚目 46日分"><circle class="seed m8" cx="259.0" cy="248.0" r="6.6" style="--o:.45;animation-delay:0ms"/><circle class="seed m8" cx="95.0" cy="250.0" r="6.6" style="--o:.45;animation-delay:18ms"/><circle class="seed m8" cx="69.0" cy="226.0" r="6.6" style="--o:.45;animation-delay:36ms"/><circle class="seed m8" cx="169.0" cy="192.0" r="6.6" style="--o:.45;animation-delay:54ms"/><circle class="seed m8" cx="273.0" cy="274.0" r="6.6" style="--o:.45;animation-delay:72ms"/><circle class="seed m8" cx="87.0" cy="160.0" r="6.6" style="--o:.45;animation-delay:90ms"/><circle class="seed m8" cx="209.0" cy="152.0" r="6.6" style="--o:.45;animation-delay:108ms"/><circle class="seed m8" cx="141.0" cy="140.0" r="6.6" style="--o:.45;animation-delay:126ms"/><circle class="seed m8" cx="113.0" cy="248.0" r="4.2" style="--o:.45;animation-delay:144ms"/><circle class="seed m8" cx="247.0" cy="250.0" r="6.6" style="--o:.45;animation-delay:162ms"/><circle class="seed m8" cx="163.0" cy="162.0" r="6.6" style="--o:.45;animation-delay:180ms"/><circle class="seed m8" cx="225.0" cy="104.0" r="6.6" style="--o:.45;animation-delay:198ms"/><circle class="seed m8" cx="159.0" cy="62.0" r="6.6" style="--o:.45;animation-delay:216ms"/><circle class="seed m8" cx="49.0" cy="214.0" r="6.6" style="--o:.45;animation-delay:234ms"/><circle class="seed m8" cx="227.0" cy="228.0" r="6.6" style="--o:.45;animation-delay:252ms"/><circle class="seed m8" cx="109.0" cy="180.0" r="6.6" style="--o:.45;animation-delay:270ms"/><circle class="seed m8" cx="141.0" cy="90.0" r="6.6" style="--o:.45;animation-delay:288ms"/><circle class="seed m8" cx="235.0" cy="88.0" r="6.6" style="--o:.45;animation-delay:306ms"/><circle class="seed m8" cx="149.0" cy="212.0" r="4.2" style="--o:.45;animation-delay:324ms"/><circle class="seed m9" cx="177.0" cy="54.0" r="4.2" style="--o:.72;animation-delay:342ms"/><circle class="seed m9" cx="195.0" cy="50.0" r="6.6" style="--o:.72;animation-delay:360ms"/><circle class="seed m9" cx="195.0" cy="134.0" r="6.6" style="--o:.72;animation-delay:378ms"/><circle class="seed m9" cx="235.0" cy="126.0" r="6.6" style="--o:.72;animation-delay:396ms"/><circle class="seed m9" cx="177.0" cy="184.0" r="4.2" style="--o:.72;animation-delay:414ms"/><circle class="seed m9" cx="197.0" cy="96.0" r="6.6" style="--o:.72;animation-delay:432ms"/><circle class="seed m9" cx="255.0" cy="46.0" r="6.6" style="--o:.72;animation-delay:450ms"/><circle class="seed m9" cx="125.0" cy="82.0" r="6.6" style="--o:.72;animation-delay:468ms"/><circle class="seed m9" cx="95.0" cy="108.0" r="6.6" style="--o:.72;animation-delay:486ms"/><circle class="seed m9" cx="161.0" cy="200.0" r="6.6" style="--o:.72;animation-delay:504ms"/><circle class="seed m9" cx="103.0" cy="164.0" r="6.6" style="--o:.72;animation-delay:522ms"/><circle class="seed m9" cx="91.0" cy="140.0" r="6.6" style="--o:.72;animation-delay:540ms"/><circle class="seed m9" cx="267.0" cy="256.0" r="4.2" style="--o:.72;animation-delay:558ms"/><circle class="seed m9" cx="109.0" cy="94.0" r="6.6" style="--o:.72;animation-delay:576ms"/><circle class="seed m9" cx="71.0" cy="200.0" r="4.2" style="--o:.72;animation-delay:594ms"/><circle class="seed m9" cx="125.0" cy="178.0" r="6.6" style="--o:.72;animation-delay:612ms"/><circle class="seed m9" cx="263.0" cy="268.0" r="4.2" style="--o:.72;animation-delay:630ms"/><circle class="seed m9" cx="255.0" cy="82.0" r="6.6" style="--o:.72;animation-delay:648ms"/><circle class="seed m10" cx="73.0" cy="140.0" r="6.6" style="--o:1;animation-delay:666ms"/><circle class="seed m10" cx="245.0" cy="116.0" r="4.2" style="--o:1;animation-delay:684ms"/><circle class="seed m10" cx="139.0" cy="122.0" r="4.2" style="--o:1;animation-delay:702ms"/><circle class="seed m10" cx="201.0" cy="160.0" r="6.6" style="--o:1;animation-delay:720ms"/><circle class="seed m10" cx="255.0" cy="260.0" r="6.6" style="--o:1;animation-delay:738ms"/><circle class="seed m10" cx="255.0" cy="58.0" r="6.6" style="--o:1;animation-delay:756ms"/><circle class="seed m10" cx="161.0" cy="86.0" r="6.6" style="--o:1;animation-delay:774ms"/><circle class="seed m10" cx="49.0" cy="244.0" r="6.6" style="--o:1;animation-delay:792ms"/><circle class="seed m10 last" cx="85.0" cy="234.0" r="6.6" style="--o:1;animation-delay:810ms"/><circle class="seed-next" cx="147.0" cy="106.0" r="6.6"/></svg>
+        </div>
+        <div class="home-body">
+          <div class="tally2"><span class="tally2-num num">46<small>/100</small></span><span class="tally2-sub">1枚目 ・ 8月3日から</span></div>
+          <div class="starts">
+            <button class="start start--lead" data-lead><span>絵探し</span><span class="start-side"><span class="start-sub">47日目</span><span class="start-arrow" aria-hidden="true">→</span></span></button>
+            <button class="start start--quiet"><span>中央の縞</span><span class="start-arrow" aria-hidden="true">→</span></button>
+          </div>
+        </div>
+        <section class="history">
+          <div class="history-head">記録</div>
+          <ul class="rows">
+            <li class="row">
+              <div class="row-main"><div class="num">10/17 05:17</div><div class="meta">疲れ 2→3</div></div>
+              <div class="row-val num">12問</div>
+            </li>
+            <li class="row">
+              <div class="row-main"><div class="num">10/15 05:17</div><div class="meta"><span class="tag">中央の縞</span>疲れ 3→3</div></div>
+              <div class="row-val num">82%</div>
+            </li>
+            <li class="row">
+              <div class="row-main"><div class="num">10/13 05:17</div><div class="meta">疲れ 4→3</div></div>
+              <div class="row-val num">10問</div>
+            </li>
+          </ul>
+        </section>
+        <p class="footnote">医療機器ではありません。目の痛み・複視・急なかすみがある日は使わず、眼科を受診してください。</p>
+      </div>
+    </section>
+
+    <!-- 1G ホーム：完成した日 -->
+    <section class="frame">
+      <div class="frame-cap">1G' 完成した日（100日目）※見本の絵</div>
+      <div class="phone home-g">
+        <div class="home-top2"><span class="date-meta num">1月12日 火曜</span><button class="icon-btn more-btn open-backstage" aria-label="使い方・設定"><svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><circle cx="5" cy="12" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="19" cy="12" r="2"/></svg></button></div>
+        <div class="grow grow--done">
+          <svg class="grow-svg" viewBox="0 0 320 320" role="img" aria-label="1枚目 完成"><circle class="seed m8" cx="259.0" cy="248.0" r="6.6" style="--o:1;animation-delay:0ms"/><circle class="seed m8" cx="95.0" cy="250.0" r="6.6" style="--o:1;animation-delay:18ms"/><circle class="seed m8" cx="69.0" cy="226.0" r="6.6" style="--o:1;animation-delay:36ms"/><circle class="seed m8" cx="169.0" cy="192.0" r="6.6" style="--o:1;animation-delay:54ms"/><circle class="seed m8" cx="273.0" cy="274.0" r="6.6" style="--o:1;animation-delay:72ms"/><circle class="seed m8" cx="87.0" cy="160.0" r="6.6" style="--o:1;animation-delay:90ms"/><circle class="seed m8" cx="209.0" cy="152.0" r="6.6" style="--o:1;animation-delay:108ms"/><circle class="seed m8" cx="141.0" cy="140.0" r="6.6" style="--o:1;animation-delay:126ms"/><circle class="seed m8" cx="113.0" cy="248.0" r="4.2" style="--o:1;animation-delay:144ms"/><circle class="seed m8" cx="247.0" cy="250.0" r="6.6" style="--o:1;animation-delay:162ms"/><circle class="seed m8" cx="163.0" cy="162.0" r="6.6" style="--o:1;animation-delay:180ms"/><circle class="seed m8" cx="225.0" cy="104.0" r="6.6" style="--o:1;animation-delay:198ms"/><circle class="seed m8" cx="159.0" cy="62.0" r="6.6" style="--o:1;animation-delay:216ms"/><circle class="seed m8" cx="49.0" cy="214.0" r="6.6" style="--o:1;animation-delay:234ms"/><circle class="seed m8" cx="227.0" cy="228.0" r="6.6" style="--o:1;animation-delay:252ms"/><circle class="seed m8" cx="109.0" cy="180.0" r="6.6" style="--o:1;animation-delay:270ms"/><circle class="seed m8" cx="141.0" cy="90.0" r="6.6" style="--o:1;animation-delay:288ms"/><circle class="seed m8" cx="235.0" cy="88.0" r="6.6" style="--o:1;animation-delay:306ms"/><circle class="seed m8" cx="149.0" cy="212.0" r="4.2" style="--o:1;animation-delay:324ms"/><circle class="seed m9" cx="177.0" cy="54.0" r="4.2" style="--o:1;animation-delay:342ms"/><circle class="seed m9" cx="195.0" cy="50.0" r="6.6" style="--o:1;animation-delay:360ms"/><circle class="seed m9" cx="195.0" cy="134.0" r="6.6" style="--o:1;animation-delay:378ms"/><circle class="seed m9" cx="235.0" cy="126.0" r="6.6" style="--o:1;animation-delay:396ms"/><circle class="seed m9" cx="177.0" cy="184.0" r="4.2" style="--o:1;animation-delay:414ms"/><circle class="seed m9" cx="197.0" cy="96.0" r="6.6" style="--o:1;animation-delay:432ms"/><circle class="seed m9" cx="255.0" cy="46.0" r="6.6" style="--o:1;animation-delay:450ms"/><circle class="seed m9" cx="125.0" cy="82.0" r="6.6" style="--o:1;animation-delay:468ms"/><circle class="seed m9" cx="95.0" cy="108.0" r="6.6" style="--o:1;animation-delay:486ms"/><circle class="seed m9" cx="161.0" cy="200.0" r="6.6" style="--o:1;animation-delay:504ms"/><circle class="seed m9" cx="103.0" cy="164.0" r="6.6" style="--o:1;animation-delay:522ms"/><circle class="seed m9" cx="91.0" cy="140.0" r="6.6" style="--o:1;animation-delay:540ms"/><circle class="seed m9" cx="267.0" cy="256.0" r="4.2" style="--o:1;animation-delay:558ms"/><circle class="seed m9" cx="109.0" cy="94.0" r="6.6" style="--o:1;animation-delay:576ms"/><circle class="seed m9" cx="71.0" cy="200.0" r="4.2" style="--o:1;animation-delay:594ms"/><circle class="seed m9" cx="125.0" cy="178.0" r="6.6" style="--o:1;animation-delay:612ms"/><circle class="seed m9" cx="263.0" cy="268.0" r="4.2" style="--o:1;animation-delay:630ms"/><circle class="seed m9" cx="255.0" cy="82.0" r="6.6" style="--o:1;animation-delay:648ms"/><circle class="seed m10" cx="73.0" cy="140.0" r="6.6" style="--o:1;animation-delay:666ms"/><circle class="seed m10" cx="245.0" cy="116.0" r="4.2" style="--o:1;animation-delay:684ms"/><circle class="seed m10" cx="139.0" cy="122.0" r="4.2" style="--o:1;animation-delay:702ms"/><circle class="seed m10" cx="201.0" cy="160.0" r="6.6" style="--o:1;animation-delay:720ms"/><circle class="seed m10" cx="255.0" cy="260.0" r="6.6" style="--o:1;animation-delay:738ms"/><circle class="seed m10" cx="255.0" cy="58.0" r="6.6" style="--o:1;animation-delay:756ms"/><circle class="seed m10" cx="161.0" cy="86.0" r="6.6" style="--o:1;animation-delay:774ms"/><circle class="seed m10" cx="49.0" cy="244.0" r="6.6" style="--o:1;animation-delay:792ms"/><circle class="seed m10" cx="85.0" cy="234.0" r="6.6" style="--o:1;animation-delay:810ms"/><circle class="seed m10" cx="147.0" cy="106.0" r="6.6" style="--o:1;animation-delay:828ms"/><circle class="seed m10" cx="115.0" cy="208.0" r="6.6" style="--o:1;animation-delay:846ms"/><circle class="seed m10" cx="203.0" cy="68.0" r="6.6" style="--o:1;animation-delay:864ms"/><circle class="seed m10" cx="141.0" cy="174.0" r="6.6" style="--o:1;animation-delay:882ms"/><circle class="seed m10" cx="57.0" cy="252.0" r="6.6" style="--o:1;animation-delay:900ms"/><circle class="seed m10" cx="175.0" cy="140.0" r="4.2" style="--o:1;animation-delay:918ms"/><circle class="seed m10" cx="51.0" cy="196.0" r="4.2" style="--o:1;animation-delay:936ms"/><circle class="seed m10" cx="133.0" cy="196.0" r="6.6" style="--o:1;animation-delay:954ms"/><circle class="seed m11" cx="207.0" cy="116.0" r="6.6" style="--o:1;animation-delay:972ms"/><circle class="seed m11" cx="141.0" cy="72.0" r="6.6" style="--o:1;animation-delay:990ms"/><circle class="seed m11" cx="185.0" cy="176.0" r="6.6" style="--o:1;animation-delay:1008ms"/><circle class="seed m11" cx="253.0" cy="94.0" r="4.2" style="--o:1;animation-delay:1026ms"/><circle class="seed m11" cx="241.0" cy="226.0" r="6.6" style="--o:1;animation-delay:1044ms"/><circle class="seed m11" cx="159.0" cy="124.0" r="6.6" style="--o:1;animation-delay:1062ms"/><circle class="seed m11" cx="127.0" cy="102.0" r="6.6" style="--o:1;animation-delay:1080ms"/><circle class="seed m11" cx="47.0" cy="234.0" r="6.6" style="--o:1;animation-delay:1098ms"/><circle class="seed m11" cx="57.0" cy="176.0" r="6.6" style="--o:1;animation-delay:1116ms"/><circle class="seed m11" cx="181.0" cy="156.0" r="4.2" style="--o:1;animation-delay:1134ms"/><circle class="seed m11" cx="103.0" cy="228.0" r="4.2" style="--o:1;animation-delay:1152ms"/><circle class="seed m11" cx="137.0" cy="224.0" r="6.6" style="--o:1;animation-delay:1170ms"/><circle class="seed m11" cx="215.0" cy="46.0" r="4.2" style="--o:1;animation-delay:1188ms"/><circle class="seed m11" cx="213.0" cy="86.0" r="6.6" style="--o:1;animation-delay:1206ms"/><circle class="seed m11" cx="125.0" cy="236.0" r="6.6" style="--o:1;animation-delay:1224ms"/><circle class="seed m11" cx="63.0" cy="158.0" r="4.2" style="--o:1;animation-delay:1242ms"/><circle class="seed m11" cx="255.0" cy="70.0" r="6.6" style="--o:1;animation-delay:1260ms"/><circle class="seed m11" cx="185.0" cy="80.0" r="6.6" style="--o:1;animation-delay:1278ms"/><circle class="seed m11" cx="103.0" cy="126.0" r="6.6" style="--o:1;animation-delay:1296ms"/><circle class="seed m12" cx="231.0" cy="218.0" r="6.6" style="--o:1;animation-delay:1314ms"/><circle class="seed m12" cx="181.0" cy="108.0" r="6.6" style="--o:1;animation-delay:1332ms"/><circle class="seed m12" cx="87.0" cy="212.0" r="6.6" style="--o:1;animation-delay:1350ms"/><circle class="seed m12" cx="235.0" cy="46.0" r="6.6" style="--o:1;animation-delay:1368ms"/><circle class="seed m12" cx="157.0" cy="180.0" r="4.2" style="--o:1;animation-delay:1386ms"/><circle class="seed m12" cx="83.0" cy="124.0" r="6.6" style="--o:1;animation-delay:1404ms"/><circle class="seed m12" cx="205.0" cy="48.0" r="4.2" style="--o:1;animation-delay:1422ms"/><circle class="seed m12" cx="123.0" cy="138.0" r="6.6" style="--o:1;animation-delay:1440ms"/><circle class="seed m12" cx="227.0" cy="134.0" r="6.6" style="--o:1;animation-delay:1458ms"/><circle class="seed m12" cx="177.0" cy="124.0" r="6.6" style="--o:1;animation-delay:1476ms"/><circle class="seed m12" cx="159.0" cy="144.0" r="6.6" style="--o:1;animation-delay:1494ms"/><circle class="seed m12" cx="55.0" cy="186.0" r="6.6" style="--o:1;animation-delay:1512ms"/><circle class="seed m12" cx="77.0" cy="252.0" r="6.6" style="--o:1;animation-delay:1530ms"/><circle class="seed m12" cx="217.0" cy="144.0" r="6.6" style="--o:1;animation-delay:1548ms"/><circle class="seed m12" cx="231.0" cy="70.0" r="6.6" style="--o:1;animation-delay:1566ms"/><circle class="seed m12" cx="83.0" cy="184.0" r="4.2" style="--o:1;animation-delay:1584ms"/><circle class="seed m1" cx="249.0" cy="236.0" r="6.6" style="--o:1;animation-delay:1602ms"/><circle class="seed m1" cx="165.0" cy="102.0" r="4.2" style="--o:1;animation-delay:1620ms"/><circle class="seed m1" cx="251.0" cy="106.0" r="6.6" style="--o:1;animation-delay:1638ms"/><circle class="seed m1" cx="193.0" cy="168.0" r="4.2" style="--o:1;animation-delay:1656ms"/><circle class="seed m1" cx="147.0" cy="156.0" r="6.6" style="--o:1;animation-delay:1674ms"/><circle class="seed m1" cx="107.0" cy="146.0" r="6.6" style="--o:1;animation-delay:1692ms"/><circle class="seed m1" cx="123.0" cy="162.0" r="6.6" style="--o:1;animation-delay:1710ms"/><circle class="seed m1" cx="121.0" cy="120.0" r="4.2" style="--o:1;animation-delay:1728ms"/><circle class="seed m1" cx="67.0" cy="254.0" r="4.2" style="--o:1;animation-delay:1746ms"/><circle class="seed m1" cx="235.0" cy="236.0" r="6.6" style="--o:1;animation-delay:1764ms"/><circle class="seed m1 last" cx="99.0" cy="196.0" r="6.6" style="--o:1;animation-delay:1782ms"/></svg>
+        </div>
+        <div class="home-body">
+          <div class="done-head"><span class="done-name">葉</span><span class="tally2-sub">1枚目 ・ 100日 ・ 8月3日〜1月12日</span></div>
+          <div class="starts">
+            <button class="start start--lead" data-lead><span>絵探し</span><span class="start-side"><span class="start-sub">2枚目 1日目</span><span class="start-arrow" aria-hidden="true">→</span></span></button>
+            <button class="start start--quiet"><span>中央の縞</span><span class="start-arrow" aria-hidden="true">→</span></button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 1G ホーム：5枚そろった後 -->
+    <section class="frame">
+      <div class="frame-cap">1G'' 5枚そろった後 ※見本の絵で代用</div>
+      <div class="phone home-g">
+        <div class="home-top2"><span class="date-meta num">2028年5月3日 水曜</span><button class="icon-btn more-btn open-backstage" aria-label="使い方・設定"><svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><circle cx="5" cy="12" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="19" cy="12" r="2"/></svg></button></div>
+        <div class="shelf">
+          <div class="shelf-grid"><svg class="thumb" viewBox="0 0 320 320" aria-hidden="true"><circle cx="259.0" cy="248.0" r="7"/><circle cx="95.0" cy="250.0" r="7"/><circle cx="69.0" cy="226.0" r="7"/><circle cx="169.0" cy="192.0" r="7"/><circle cx="273.0" cy="274.0" r="7"/><circle cx="87.0" cy="160.0" r="7"/><circle cx="209.0" cy="152.0" r="7"/><circle cx="141.0" cy="140.0" r="7"/><circle cx="113.0" cy="248.0" r="7"/><circle cx="247.0" cy="250.0" r="7"/><circle cx="163.0" cy="162.0" r="7"/><circle cx="225.0" cy="104.0" r="7"/><circle cx="159.0" cy="62.0" r="7"/><circle cx="49.0" cy="214.0" r="7"/><circle cx="227.0" cy="228.0" r="7"/><circle cx="109.0" cy="180.0" r="7"/><circle cx="141.0" cy="90.0" r="7"/><circle cx="235.0" cy="88.0" r="7"/><circle cx="149.0" cy="212.0" r="7"/><circle cx="177.0" cy="54.0" r="7"/><circle cx="195.0" cy="50.0" r="7"/><circle cx="195.0" cy="134.0" r="7"/><circle cx="235.0" cy="126.0" r="7"/><circle cx="177.0" cy="184.0" r="7"/><circle cx="197.0" cy="96.0" r="7"/><circle cx="255.0" cy="46.0" r="7"/><circle cx="125.0" cy="82.0" r="7"/><circle cx="95.0" cy="108.0" r="7"/><circle cx="161.0" cy="200.0" r="7"/><circle cx="103.0" cy="164.0" r="7"/><circle cx="91.0" cy="140.0" r="7"/><circle cx="267.0" cy="256.0" r="7"/><circle cx="109.0" cy="94.0" r="7"/><circle cx="71.0" cy="200.0" r="7"/><circle cx="125.0" cy="178.0" r="7"/><circle cx="263.0" cy="268.0" r="7"/><circle cx="255.0" cy="82.0" r="7"/><circle cx="73.0" cy="140.0" r="7"/><circle cx="245.0" cy="116.0" r="7"/><circle cx="139.0" cy="122.0" r="7"/><circle cx="201.0" cy="160.0" r="7"/><circle cx="255.0" cy="260.0" r="7"/><circle cx="255.0" cy="58.0" r="7"/><circle cx="161.0" cy="86.0" r="7"/><circle cx="49.0" cy="244.0" r="7"/><circle cx="85.0" cy="234.0" r="7"/><circle cx="147.0" cy="106.0" r="7"/><circle cx="115.0" cy="208.0" r="7"/><circle cx="203.0" cy="68.0" r="7"/><circle cx="141.0" cy="174.0" r="7"/><circle cx="57.0" cy="252.0" r="7"/><circle cx="175.0" cy="140.0" r="7"/><circle cx="51.0" cy="196.0" r="7"/><circle cx="133.0" cy="196.0" r="7"/><circle cx="207.0" cy="116.0" r="7"/><circle cx="141.0" cy="72.0" r="7"/><circle cx="185.0" cy="176.0" r="7"/><circle cx="253.0" cy="94.0" r="7"/><circle cx="241.0" cy="226.0" r="7"/><circle cx="159.0" cy="124.0" r="7"/><circle cx="127.0" cy="102.0" r="7"/><circle cx="47.0" cy="234.0" r="7"/><circle cx="57.0" cy="176.0" r="7"/><circle cx="181.0" cy="156.0" r="7"/><circle cx="103.0" cy="228.0" r="7"/><circle cx="137.0" cy="224.0" r="7"/><circle cx="215.0" cy="46.0" r="7"/><circle cx="213.0" cy="86.0" r="7"/><circle cx="125.0" cy="236.0" r="7"/><circle cx="63.0" cy="158.0" r="7"/><circle cx="255.0" cy="70.0" r="7"/><circle cx="185.0" cy="80.0" r="7"/><circle cx="103.0" cy="126.0" r="7"/><circle cx="231.0" cy="218.0" r="7"/><circle cx="181.0" cy="108.0" r="7"/><circle cx="87.0" cy="212.0" r="7"/><circle cx="235.0" cy="46.0" r="7"/><circle cx="157.0" cy="180.0" r="7"/><circle cx="83.0" cy="124.0" r="7"/><circle cx="205.0" cy="48.0" r="7"/><circle cx="123.0" cy="138.0" r="7"/><circle cx="227.0" cy="134.0" r="7"/><circle cx="177.0" cy="124.0" r="7"/><circle cx="159.0" cy="144.0" r="7"/><circle cx="55.0" cy="186.0" r="7"/><circle cx="77.0" cy="252.0" r="7"/><circle cx="217.0" cy="144.0" r="7"/><circle cx="231.0" cy="70.0" r="7"/><circle cx="83.0" cy="184.0" r="7"/><circle cx="249.0" cy="236.0" r="7"/><circle cx="165.0" cy="102.0" r="7"/><circle cx="251.0" cy="106.0" r="7"/><circle cx="193.0" cy="168.0" r="7"/><circle cx="147.0" cy="156.0" r="7"/><circle cx="107.0" cy="146.0" r="7"/><circle cx="123.0" cy="162.0" r="7"/><circle cx="121.0" cy="120.0" r="7"/><circle cx="67.0" cy="254.0" r="7"/><circle cx="235.0" cy="236.0" r="7"/><circle cx="99.0" cy="196.0" r="7"/></svg><svg class="thumb" viewBox="0 0 320 320" aria-hidden="true"><circle cx="259.0" cy="248.0" r="7"/><circle cx="95.0" cy="250.0" r="7"/><circle cx="69.0" cy="226.0" r="7"/><circle cx="169.0" cy="192.0" r="7"/><circle cx="273.0" cy="274.0" r="7"/><circle cx="87.0" cy="160.0" r="7"/><circle cx="209.0" cy="152.0" r="7"/><circle cx="141.0" cy="140.0" r="7"/><circle cx="113.0" cy="248.0" r="7"/><circle cx="247.0" cy="250.0" r="7"/><circle cx="163.0" cy="162.0" r="7"/><circle cx="225.0" cy="104.0" r="7"/><circle cx="159.0" cy="62.0" r="7"/><circle cx="49.0" cy="214.0" r="7"/><circle cx="227.0" cy="228.0" r="7"/><circle cx="109.0" cy="180.0" r="7"/><circle cx="141.0" cy="90.0" r="7"/><circle cx="235.0" cy="88.0" r="7"/><circle cx="149.0" cy="212.0" r="7"/><circle cx="177.0" cy="54.0" r="7"/><circle cx="195.0" cy="50.0" r="7"/><circle cx="195.0" cy="134.0" r="7"/><circle cx="235.0" cy="126.0" r="7"/><circle cx="177.0" cy="184.0" r="7"/><circle cx="197.0" cy="96.0" r="7"/><circle cx="255.0" cy="46.0" r="7"/><circle cx="125.0" cy="82.0" r="7"/><circle cx="95.0" cy="108.0" r="7"/><circle cx="161.0" cy="200.0" r="7"/><circle cx="103.0" cy="164.0" r="7"/><circle cx="91.0" cy="140.0" r="7"/><circle cx="267.0" cy="256.0" r="7"/><circle cx="109.0" cy="94.0" r="7"/><circle cx="71.0" cy="200.0" r="7"/><circle cx="125.0" cy="178.0" r="7"/><circle cx="263.0" cy="268.0" r="7"/><circle cx="255.0" cy="82.0" r="7"/><circle cx="73.0" cy="140.0" r="7"/><circle cx="245.0" cy="116.0" r="7"/><circle cx="139.0" cy="122.0" r="7"/><circle cx="201.0" cy="160.0" r="7"/><circle cx="255.0" cy="260.0" r="7"/><circle cx="255.0" cy="58.0" r="7"/><circle cx="161.0" cy="86.0" r="7"/><circle cx="49.0" cy="244.0" r="7"/><circle cx="85.0" cy="234.0" r="7"/><circle cx="147.0" cy="106.0" r="7"/><circle cx="115.0" cy="208.0" r="7"/><circle cx="203.0" cy="68.0" r="7"/><circle cx="141.0" cy="174.0" r="7"/><circle cx="57.0" cy="252.0" r="7"/><circle cx="175.0" cy="140.0" r="7"/><circle cx="51.0" cy="196.0" r="7"/><circle cx="133.0" cy="196.0" r="7"/><circle cx="207.0" cy="116.0" r="7"/><circle cx="141.0" cy="72.0" r="7"/><circle cx="185.0" cy="176.0" r="7"/><circle cx="253.0" cy="94.0" r="7"/><circle cx="241.0" cy="226.0" r="7"/><circle cx="159.0" cy="124.0" r="7"/><circle cx="127.0" cy="102.0" r="7"/><circle cx="47.0" cy="234.0" r="7"/><circle cx="57.0" cy="176.0" r="7"/><circle cx="181.0" cy="156.0" r="7"/><circle cx="103.0" cy="228.0" r="7"/><circle cx="137.0" cy="224.0" r="7"/><circle cx="215.0" cy="46.0" r="7"/><circle cx="213.0" cy="86.0" r="7"/><circle cx="125.0" cy="236.0" r="7"/><circle cx="63.0" cy="158.0" r="7"/><circle cx="255.0" cy="70.0" r="7"/><circle cx="185.0" cy="80.0" r="7"/><circle cx="103.0" cy="126.0" r="7"/><circle cx="231.0" cy="218.0" r="7"/><circle cx="181.0" cy="108.0" r="7"/><circle cx="87.0" cy="212.0" r="7"/><circle cx="235.0" cy="46.0" r="7"/><circle cx="157.0" cy="180.0" r="7"/><circle cx="83.0" cy="124.0" r="7"/><circle cx="205.0" cy="48.0" r="7"/><circle cx="123.0" cy="138.0" r="7"/><circle cx="227.0" cy="134.0" r="7"/><circle cx="177.0" cy="124.0" r="7"/><circle cx="159.0" cy="144.0" r="7"/><circle cx="55.0" cy="186.0" r="7"/><circle cx="77.0" cy="252.0" r="7"/><circle cx="217.0" cy="144.0" r="7"/><circle cx="231.0" cy="70.0" r="7"/><circle cx="83.0" cy="184.0" r="7"/><circle cx="249.0" cy="236.0" r="7"/><circle cx="165.0" cy="102.0" r="7"/><circle cx="251.0" cy="106.0" r="7"/><circle cx="193.0" cy="168.0" r="7"/><circle cx="147.0" cy="156.0" r="7"/><circle cx="107.0" cy="146.0" r="7"/><circle cx="123.0" cy="162.0" r="7"/><circle cx="121.0" cy="120.0" r="7"/><circle cx="67.0" cy="254.0" r="7"/><circle cx="235.0" cy="236.0" r="7"/><circle cx="99.0" cy="196.0" r="7"/></svg><svg class="thumb" viewBox="0 0 320 320" aria-hidden="true"><circle cx="259.0" cy="248.0" r="7"/><circle cx="95.0" cy="250.0" r="7"/><circle cx="69.0" cy="226.0" r="7"/><circle cx="169.0" cy="192.0" r="7"/><circle cx="273.0" cy="274.0" r="7"/><circle cx="87.0" cy="160.0" r="7"/><circle cx="209.0" cy="152.0" r="7"/><circle cx="141.0" cy="140.0" r="7"/><circle cx="113.0" cy="248.0" r="7"/><circle cx="247.0" cy="250.0" r="7"/><circle cx="163.0" cy="162.0" r="7"/><circle cx="225.0" cy="104.0" r="7"/><circle cx="159.0" cy="62.0" r="7"/><circle cx="49.0" cy="214.0" r="7"/><circle cx="227.0" cy="228.0" r="7"/><circle cx="109.0" cy="180.0" r="7"/><circle cx="141.0" cy="90.0" r="7"/><circle cx="235.0" cy="88.0" r="7"/><circle cx="149.0" cy="212.0" r="7"/><circle cx="177.0" cy="54.0" r="7"/><circle cx="195.0" cy="50.0" r="7"/><circle cx="195.0" cy="134.0" r="7"/><circle cx="235.0" cy="126.0" r="7"/><circle cx="177.0" cy="184.0" r="7"/><circle cx="197.0" cy="96.0" r="7"/><circle cx="255.0" cy="46.0" r="7"/><circle cx="125.0" cy="82.0" r="7"/><circle cx="95.0" cy="108.0" r="7"/><circle cx="161.0" cy="200.0" r="7"/><circle cx="103.0" cy="164.0" r="7"/><circle cx="91.0" cy="140.0" r="7"/><circle cx="267.0" cy="256.0" r="7"/><circle cx="109.0" cy="94.0" r="7"/><circle cx="71.0" cy="200.0" r="7"/><circle cx="125.0" cy="178.0" r="7"/><circle cx="263.0" cy="268.0" r="7"/><circle cx="255.0" cy="82.0" r="7"/><circle cx="73.0" cy="140.0" r="7"/><circle cx="245.0" cy="116.0" r="7"/><circle cx="139.0" cy="122.0" r="7"/><circle cx="201.0" cy="160.0" r="7"/><circle cx="255.0" cy="260.0" r="7"/><circle cx="255.0" cy="58.0" r="7"/><circle cx="161.0" cy="86.0" r="7"/><circle cx="49.0" cy="244.0" r="7"/><circle cx="85.0" cy="234.0" r="7"/><circle cx="147.0" cy="106.0" r="7"/><circle cx="115.0" cy="208.0" r="7"/><circle cx="203.0" cy="68.0" r="7"/><circle cx="141.0" cy="174.0" r="7"/><circle cx="57.0" cy="252.0" r="7"/><circle cx="175.0" cy="140.0" r="7"/><circle cx="51.0" cy="196.0" r="7"/><circle cx="133.0" cy="196.0" r="7"/><circle cx="207.0" cy="116.0" r="7"/><circle cx="141.0" cy="72.0" r="7"/><circle cx="185.0" cy="176.0" r="7"/><circle cx="253.0" cy="94.0" r="7"/><circle cx="241.0" cy="226.0" r="7"/><circle cx="159.0" cy="124.0" r="7"/><circle cx="127.0" cy="102.0" r="7"/><circle cx="47.0" cy="234.0" r="7"/><circle cx="57.0" cy="176.0" r="7"/><circle cx="181.0" cy="156.0" r="7"/><circle cx="103.0" cy="228.0" r="7"/><circle cx="137.0" cy="224.0" r="7"/><circle cx="215.0" cy="46.0" r="7"/><circle cx="213.0" cy="86.0" r="7"/><circle cx="125.0" cy="236.0" r="7"/><circle cx="63.0" cy="158.0" r="7"/><circle cx="255.0" cy="70.0" r="7"/><circle cx="185.0" cy="80.0" r="7"/><circle cx="103.0" cy="126.0" r="7"/><circle cx="231.0" cy="218.0" r="7"/><circle cx="181.0" cy="108.0" r="7"/><circle cx="87.0" cy="212.0" r="7"/><circle cx="235.0" cy="46.0" r="7"/><circle cx="157.0" cy="180.0" r="7"/><circle cx="83.0" cy="124.0" r="7"/><circle cx="205.0" cy="48.0" r="7"/><circle cx="123.0" cy="138.0" r="7"/><circle cx="227.0" cy="134.0" r="7"/><circle cx="177.0" cy="124.0" r="7"/><circle cx="159.0" cy="144.0" r="7"/><circle cx="55.0" cy="186.0" r="7"/><circle cx="77.0" cy="252.0" r="7"/><circle cx="217.0" cy="144.0" r="7"/><circle cx="231.0" cy="70.0" r="7"/><circle cx="83.0" cy="184.0" r="7"/><circle cx="249.0" cy="236.0" r="7"/><circle cx="165.0" cy="102.0" r="7"/><circle cx="251.0" cy="106.0" r="7"/><circle cx="193.0" cy="168.0" r="7"/><circle cx="147.0" cy="156.0" r="7"/><circle cx="107.0" cy="146.0" r="7"/><circle cx="123.0" cy="162.0" r="7"/><circle cx="121.0" cy="120.0" r="7"/><circle cx="67.0" cy="254.0" r="7"/><circle cx="235.0" cy="236.0" r="7"/><circle cx="99.0" cy="196.0" r="7"/></svg><svg class="thumb" viewBox="0 0 320 320" aria-hidden="true"><circle cx="259.0" cy="248.0" r="7"/><circle cx="95.0" cy="250.0" r="7"/><circle cx="69.0" cy="226.0" r="7"/><circle cx="169.0" cy="192.0" r="7"/><circle cx="273.0" cy="274.0" r="7"/><circle cx="87.0" cy="160.0" r="7"/><circle cx="209.0" cy="152.0" r="7"/><circle cx="141.0" cy="140.0" r="7"/><circle cx="113.0" cy="248.0" r="7"/><circle cx="247.0" cy="250.0" r="7"/><circle cx="163.0" cy="162.0" r="7"/><circle cx="225.0" cy="104.0" r="7"/><circle cx="159.0" cy="62.0" r="7"/><circle cx="49.0" cy="214.0" r="7"/><circle cx="227.0" cy="228.0" r="7"/><circle cx="109.0" cy="180.0" r="7"/><circle cx="141.0" cy="90.0" r="7"/><circle cx="235.0" cy="88.0" r="7"/><circle cx="149.0" cy="212.0" r="7"/><circle cx="177.0" cy="54.0" r="7"/><circle cx="195.0" cy="50.0" r="7"/><circle cx="195.0" cy="134.0" r="7"/><circle cx="235.0" cy="126.0" r="7"/><circle cx="177.0" cy="184.0" r="7"/><circle cx="197.0" cy="96.0" r="7"/><circle cx="255.0" cy="46.0" r="7"/><circle cx="125.0" cy="82.0" r="7"/><circle cx="95.0" cy="108.0" r="7"/><circle cx="161.0" cy="200.0" r="7"/><circle cx="103.0" cy="164.0" r="7"/><circle cx="91.0" cy="140.0" r="7"/><circle cx="267.0" cy="256.0" r="7"/><circle cx="109.0" cy="94.0" r="7"/><circle cx="71.0" cy="200.0" r="7"/><circle cx="125.0" cy="178.0" r="7"/><circle cx="263.0" cy="268.0" r="7"/><circle cx="255.0" cy="82.0" r="7"/><circle cx="73.0" cy="140.0" r="7"/><circle cx="245.0" cy="116.0" r="7"/><circle cx="139.0" cy="122.0" r="7"/><circle cx="201.0" cy="160.0" r="7"/><circle cx="255.0" cy="260.0" r="7"/><circle cx="255.0" cy="58.0" r="7"/><circle cx="161.0" cy="86.0" r="7"/><circle cx="49.0" cy="244.0" r="7"/><circle cx="85.0" cy="234.0" r="7"/><circle cx="147.0" cy="106.0" r="7"/><circle cx="115.0" cy="208.0" r="7"/><circle cx="203.0" cy="68.0" r="7"/><circle cx="141.0" cy="174.0" r="7"/><circle cx="57.0" cy="252.0" r="7"/><circle cx="175.0" cy="140.0" r="7"/><circle cx="51.0" cy="196.0" r="7"/><circle cx="133.0" cy="196.0" r="7"/><circle cx="207.0" cy="116.0" r="7"/><circle cx="141.0" cy="72.0" r="7"/><circle cx="185.0" cy="176.0" r="7"/><circle cx="253.0" cy="94.0" r="7"/><circle cx="241.0" cy="226.0" r="7"/><circle cx="159.0" cy="124.0" r="7"/><circle cx="127.0" cy="102.0" r="7"/><circle cx="47.0" cy="234.0" r="7"/><circle cx="57.0" cy="176.0" r="7"/><circle cx="181.0" cy="156.0" r="7"/><circle cx="103.0" cy="228.0" r="7"/><circle cx="137.0" cy="224.0" r="7"/><circle cx="215.0" cy="46.0" r="7"/><circle cx="213.0" cy="86.0" r="7"/><circle cx="125.0" cy="236.0" r="7"/><circle cx="63.0" cy="158.0" r="7"/><circle cx="255.0" cy="70.0" r="7"/><circle cx="185.0" cy="80.0" r="7"/><circle cx="103.0" cy="126.0" r="7"/><circle cx="231.0" cy="218.0" r="7"/><circle cx="181.0" cy="108.0" r="7"/><circle cx="87.0" cy="212.0" r="7"/><circle cx="235.0" cy="46.0" r="7"/><circle cx="157.0" cy="180.0" r="7"/><circle cx="83.0" cy="124.0" r="7"/><circle cx="205.0" cy="48.0" r="7"/><circle cx="123.0" cy="138.0" r="7"/><circle cx="227.0" cy="134.0" r="7"/><circle cx="177.0" cy="124.0" r="7"/><circle cx="159.0" cy="144.0" r="7"/><circle cx="55.0" cy="186.0" r="7"/><circle cx="77.0" cy="252.0" r="7"/><circle cx="217.0" cy="144.0" r="7"/><circle cx="231.0" cy="70.0" r="7"/><circle cx="83.0" cy="184.0" r="7"/><circle cx="249.0" cy="236.0" r="7"/><circle cx="165.0" cy="102.0" r="7"/><circle cx="251.0" cy="106.0" r="7"/><circle cx="193.0" cy="168.0" r="7"/><circle cx="147.0" cy="156.0" r="7"/><circle cx="107.0" cy="146.0" r="7"/><circle cx="123.0" cy="162.0" r="7"/><circle cx="121.0" cy="120.0" r="7"/><circle cx="67.0" cy="254.0" r="7"/><circle cx="235.0" cy="236.0" r="7"/><circle cx="99.0" cy="196.0" r="7"/></svg><svg class="thumb" viewBox="0 0 320 320" aria-hidden="true"><circle cx="259.0" cy="248.0" r="7"/><circle cx="95.0" cy="250.0" r="7"/><circle cx="69.0" cy="226.0" r="7"/><circle cx="169.0" cy="192.0" r="7"/><circle cx="273.0" cy="274.0" r="7"/><circle cx="87.0" cy="160.0" r="7"/><circle cx="209.0" cy="152.0" r="7"/><circle cx="141.0" cy="140.0" r="7"/><circle cx="113.0" cy="248.0" r="7"/><circle cx="247.0" cy="250.0" r="7"/><circle cx="163.0" cy="162.0" r="7"/><circle cx="225.0" cy="104.0" r="7"/><circle cx="159.0" cy="62.0" r="7"/><circle cx="49.0" cy="214.0" r="7"/><circle cx="227.0" cy="228.0" r="7"/><circle cx="109.0" cy="180.0" r="7"/><circle cx="141.0" cy="90.0" r="7"/><circle cx="235.0" cy="88.0" r="7"/><circle cx="149.0" cy="212.0" r="7"/><circle cx="177.0" cy="54.0" r="7"/><circle cx="195.0" cy="50.0" r="7"/><circle cx="195.0" cy="134.0" r="7"/><circle cx="235.0" cy="126.0" r="7"/><circle cx="177.0" cy="184.0" r="7"/><circle cx="197.0" cy="96.0" r="7"/><circle cx="255.0" cy="46.0" r="7"/><circle cx="125.0" cy="82.0" r="7"/><circle cx="95.0" cy="108.0" r="7"/><circle cx="161.0" cy="200.0" r="7"/><circle cx="103.0" cy="164.0" r="7"/><circle cx="91.0" cy="140.0" r="7"/><circle cx="267.0" cy="256.0" r="7"/><circle cx="109.0" cy="94.0" r="7"/><circle cx="71.0" cy="200.0" r="7"/><circle cx="125.0" cy="178.0" r="7"/><circle cx="263.0" cy="268.0" r="7"/><circle cx="255.0" cy="82.0" r="7"/><circle cx="73.0" cy="140.0" r="7"/><circle cx="245.0" cy="116.0" r="7"/><circle cx="139.0" cy="122.0" r="7"/><circle cx="201.0" cy="160.0" r="7"/><circle cx="255.0" cy="260.0" r="7"/><circle cx="255.0" cy="58.0" r="7"/><circle cx="161.0" cy="86.0" r="7"/><circle cx="49.0" cy="244.0" r="7"/><circle cx="85.0" cy="234.0" r="7"/><circle cx="147.0" cy="106.0" r="7"/><circle cx="115.0" cy="208.0" r="7"/><circle cx="203.0" cy="68.0" r="7"/><circle cx="141.0" cy="174.0" r="7"/><circle cx="57.0" cy="252.0" r="7"/><circle cx="175.0" cy="140.0" r="7"/><circle cx="51.0" cy="196.0" r="7"/><circle cx="133.0" cy="196.0" r="7"/><circle cx="207.0" cy="116.0" r="7"/><circle cx="141.0" cy="72.0" r="7"/><circle cx="185.0" cy="176.0" r="7"/><circle cx="253.0" cy="94.0" r="7"/><circle cx="241.0" cy="226.0" r="7"/><circle cx="159.0" cy="124.0" r="7"/><circle cx="127.0" cy="102.0" r="7"/><circle cx="47.0" cy="234.0" r="7"/><circle cx="57.0" cy="176.0" r="7"/><circle cx="181.0" cy="156.0" r="7"/><circle cx="103.0" cy="228.0" r="7"/><circle cx="137.0" cy="224.0" r="7"/><circle cx="215.0" cy="46.0" r="7"/><circle cx="213.0" cy="86.0" r="7"/><circle cx="125.0" cy="236.0" r="7"/><circle cx="63.0" cy="158.0" r="7"/><circle cx="255.0" cy="70.0" r="7"/><circle cx="185.0" cy="80.0" r="7"/><circle cx="103.0" cy="126.0" r="7"/><circle cx="231.0" cy="218.0" r="7"/><circle cx="181.0" cy="108.0" r="7"/><circle cx="87.0" cy="212.0" r="7"/><circle cx="235.0" cy="46.0" r="7"/><circle cx="157.0" cy="180.0" r="7"/><circle cx="83.0" cy="124.0" r="7"/><circle cx="205.0" cy="48.0" r="7"/><circle cx="123.0" cy="138.0" r="7"/><circle cx="227.0" cy="134.0" r="7"/><circle cx="177.0" cy="124.0" r="7"/><circle cx="159.0" cy="144.0" r="7"/><circle cx="55.0" cy="186.0" r="7"/><circle cx="77.0" cy="252.0" r="7"/><circle cx="217.0" cy="144.0" r="7"/><circle cx="231.0" cy="70.0" r="7"/><circle cx="83.0" cy="184.0" r="7"/><circle cx="249.0" cy="236.0" r="7"/><circle cx="165.0" cy="102.0" r="7"/><circle cx="251.0" cy="106.0" r="7"/><circle cx="193.0" cy="168.0" r="7"/><circle cx="147.0" cy="156.0" r="7"/><circle cx="107.0" cy="146.0" r="7"/><circle cx="123.0" cy="162.0" r="7"/><circle cx="121.0" cy="120.0" r="7"/><circle cx="67.0" cy="254.0" r="7"/><circle cx="235.0" cy="236.0" r="7"/><circle cx="99.0" cy="196.0" r="7"/></svg></div>
+          <h2 class="shelf-title">5枚そろいました</h2>
+          <p class="shelf-next">次のお題を決めましょう</p>
+          <button class="btn btn--quiet copy-ask">相談用の文をコピー</button>
+        </div>
+        <div class="home-body">
+          <div class="starts">
+            <button class="start start--lead" data-lead><span>絵探し</span><span class="start-side"><span class="start-sub">501日目</span><span class="start-arrow" aria-hidden="true">→</span></span></button>
+            <button class="start start--quiet"><span>中央の縞</span><span class="start-arrow" aria-hidden="true">→</span></button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 2 始める前の目の疲れ -->
+    <section class="frame">
+      <div class="frame-cap">2 始める前（終わった後も同じ形）</div>
+      <div class="phone screen-before">
+        <div class="bar"><button class="icon-btn" aria-label="戻る">‹</button><div class="bar-title">始める前の目の疲れ</div><span></span></div>
+        <div class="body">
+          <div class="scale" data-lead>
+            <button class="scale-btn num">0</button><button class="scale-btn num">1</button><button class="scale-btn num on">2</button>
+            <button class="scale-btn num">3</button><button class="scale-btn num">4</button><button class="scale-btn num">5</button>
+            <button class="scale-btn num">6</button><button class="scale-btn num">7</button><button class="scale-btn num">8</button>
+            <button class="scale-btn num">9</button><button class="scale-btn num">10</button>
+          </div>
+          <div class="scale-ends meta"><span>0 疲れなし</span><span>10 かなり強い</span></div>
+          <div class="field">
+            <div class="field-label">時間</div>
+            <div class="seg"><button class="seg-btn">1分</button><button class="seg-btn on">3分</button></div>
+          </div>
+          <button class="btn push-down">開始</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- 2b 終わった後の目の疲れ -->
+    <section class="frame">
+      <div class="frame-cap">2b 終わった後</div>
+      <div class="phone">
+        <div class="bar"><button class="icon-btn" aria-label="戻る">‹</button><div class="bar-title">終わった後の目の疲れ</div><span></span></div>
+        <div class="body">
+          <div class="scale">
+            <button class="scale-btn num">0</button><button class="scale-btn num">1</button><button class="scale-btn num">2</button>
+            <button class="scale-btn num on">3</button><button class="scale-btn num">4</button><button class="scale-btn num">5</button>
+            <button class="scale-btn num">6</button><button class="scale-btn num">7</button><button class="scale-btn num">8</button>
+            <button class="scale-btn num">9</button><button class="scale-btn num">10</button>
+          </div>
+          <div class="scale-ends meta"><span>0 疲れなし</span><span>10 かなり強い</span></div>
+          <button class="btn push-down">休憩へ</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- 3 中央の縞：開始前 -->
+    <section class="frame">
+      <div class="frame-cap">3 中央の縞・開始前</div>
+      <div class="phone">
+        <div class="tr">
+          <div class="tr-top"><button class="icon-btn" aria-label="終了">×</button><div class="timer num">3:00</div><span></span></div>
+          <div class="stage">
+            <canvas class="stage-canvas" data-draw="neutral"></canvas>
+            <div class="ready">
+              <h3>中央の十字を見る</h3>
+              <div class="meta">画面から40cm ・ 裸眼</div>
+              <button class="btn" data-lead>開始</button>
+            </div>
+          </div>
+          <div class="answer">
+            <div class="ask"></div>
+            <div class="choices"><button class="choice" disabled>見えた</button><button class="choice" disabled>出なかった</button></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="frame">
+      <div class="frame-cap">3b 中央の縞・初回の練習</div>
+      <div class="phone">
+        <div class="tr">
+          <div class="tr-top"><button class="icon-btn" aria-label="終了">×</button><div class="timer num">3:00</div><span></span></div>
+          <div class="stage">
+            <canvas class="stage-canvas" data-draw="neutral"></canvas>
+            <div class="ready">
+              <h3>練習 3問</h3>
+              <div class="meta">画面から40cm ・ 裸眼</div>
+              <button class="btn">練習を始める</button>
+            </div>
+          </div>
+          <div class="answer">
+            <div class="ask"></div>
+            <div class="choices"><button class="choice" disabled>見えた</button><button class="choice" disabled>出なかった</button></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="frame">
+      <div class="frame-cap">3c 中央の縞・練習のあと</div>
+      <div class="phone">
+        <div class="tr">
+          <div class="tr-top"><button class="icon-btn" aria-label="終了">×</button><div class="timer num">3:00</div><span></span></div>
+          <div class="stage">
+            <canvas class="stage-canvas" data-draw="neutral"></canvas>
+            <div class="ready">
+              <h3>練習おわり</h3>
+              <div class="meta">ここから3分</div>
+              <button class="btn">本番を始める</button>
+            </div>
+          </div>
+          <div class="answer">
+            <div class="ask"></div>
+            <div class="choices"><button class="choice" disabled>見えた</button><button class="choice" disabled>出なかった</button></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 4 中央の縞：回答 -->
+    <section class="frame">
+      <div class="frame-cap">4 中央の縞・回答</div>
+      <div class="phone screen-answer">
+        <div class="tr">
+          <div class="tr-top"><button class="icon-btn" aria-label="終了">×</button><div class="timer num">2:12</div><span></span></div>
+          <div class="stage"><canvas class="stage-canvas" data-draw="fixation"></canvas></div>
+          <div class="answer">
+            <div class="ask">縞は見えましたか</div>
+            <div class="choices" data-lead><button class="choice lead-pair">見えた</button><button class="choice lead-pair">出なかった</button></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 4b 中央の縞：回答の直後 -->
+    <section class="frame">
+      <div class="frame-cap">4b 中央の縞・回答の直後（正解／縞あり／縞なし）</div>
+      <div class="phone">
+        <div class="tr">
+          <div class="tr-top"><button class="icon-btn" aria-label="終了">×</button><div class="timer num">2:11</div><span></span></div>
+          <div class="stage"><canvas class="stage-canvas" data-draw="fixation"></canvas></div>
+          <div class="answer">
+            <div class="ask">縞は出ていました</div>
+            <div class="choices"><button class="choice" disabled>見えた</button><button class="choice" disabled>出なかった</button></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 5 絵探し：誤答の表示 -->
+    <section class="frame">
+      <div class="frame-cap">5 絵探し・誤答の直後</div>
+      <div class="phone">
+        <div class="tr tr--game">
+          <div class="tr-top"><button class="icon-btn" aria-label="終了">×</button><div class="timer num">2:41</div><span></span></div>
+          <div class="sample-bar">
+            <canvas class="sample" data-draw="sample"></canvas>
+            <span class="meta">見本</span>
+            <div class="score"><b class="num">8</b><span class="meta">正解</span></div>
+          </div>
+          <div class="stage" data-lead><canvas class="stage-canvas" data-draw="grid"></canvas></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 6 結果 -->
+    <section class="frame">
+      <div class="frame-cap">6 結果（中央の縞）</div>
+      <div class="phone">
+        <div class="bar"><span></span><div class="bar-title">結果</div><span></span></div>
+        <div class="body">
+          <div class="result num" data-lead>82%</div>
+          <div class="result-label">正答率</div>
+          <ul class="facts">
+            <li class="fact"><span>正解 / 試行</span><b class="num">33 / 40</b></li>
+            <li class="fact"><span>最終コントラスト</span><b class="num">6.4%</b></li>
+            <li class="fact"><span>平均反応時間</span><b class="num">640ms</b></li>
+          </ul>
+          <button class="btn push-down">目の疲れを記録</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- 6b 結果（絵探し） -->
+    <section class="frame">
+      <div class="frame-cap">6b 結果（絵探し）</div>
+      <div class="phone">
+        <div class="bar"><span></span><div class="bar-title">結果</div><span></span></div>
+        <div class="body">
+          <div class="result num">12</div>
+          <div class="result-label">正解</div>
+          <ul class="facts">
+            <li class="fact"><span>タップ</span><b class="num">15</b></li>
+            <li class="fact"><span>正答率</span><b class="num">80%</b></li>
+          </ul>
+          <button class="btn push-down">目の疲れを記録</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- 7 目の休憩 -->
+    <section class="frame">
+      <div class="frame-cap">7 目の休憩</div>
+      <div class="phone">
+        <div class="bar"><span></span><div class="bar-title">目の休憩</div><span></span></div>
+        <div class="body">
+          <h2 class="rest-say">6m先を見る</h2>
+          <div class="ring" data-deviation="休憩中は残り時間だけを大きく出し、円が減る動きで経過を見せる。遠くを見ていて画面へ視線を戻したとき、数字を読まなくても残りが分かるようにするため">
+            <svg viewBox="0 0 260 260" aria-hidden="true"><circle class="ring-track" cx="130" cy="130" r="122"/><circle class="ring-left" cx="130" cy="130" r="122"/></svg>
+            <div class="ring-count num" id="rest-count">20</div>
+          </div>
+          <button class="btn push-down" disabled>記録して終わる</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- 8 画面サイズ合わせ -->
+    <section class="frame">
+      <div class="frame-cap">8 画面サイズ合わせ</div>
+      <div class="phone">
+        <div class="bar"><button class="icon-btn" aria-label="戻る">‹</button><div class="bar-title">画面サイズ合わせ</div><span></span></div>
+        <div class="body">
+          <h2>カードの短い辺と同じ長さに</h2>
+          <div class="meta">53.98mm ・ カードは画面の横に置く</div>
+          <div class="cal-line-box" data-lead><div class="cal-line" style="width:280px"></div></div>
+          <div class="cal-ctrl">
+            <button class="step" aria-label="短くする">−</button>
+            <input type="range" min="160" max="336" value="280" aria-label="線の長さ" />
+            <button class="step" aria-label="長くする">＋</button>
+          </div>
+          <button class="btn push-down">保存</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- 9 裏方シート：使い方 -->
+    <section class="frame">
+      <div class="frame-cap">9 使い方・設定 › 使い方</div>
+      <div class="phone">
+        <div class="sheet-scrim"></div>
+        <div class="sheet">
+          <div class="sheet-grab"></div>
+          <div class="sheet-head"><span class="sheet-title">使い方・設定</span><button class="text-btn">閉じる</button></div>
+          <div class="tabs" role="tablist"><button class="tab on" role="tab">使い方</button><button class="tab" role="tab">設定</button><button class="tab" role="tab">保守</button></div>
+          <div class="sheet-body">
+            <div class="group">
+              <div class="group-head">できること</div>
+              <div class="card">
+                <div class="can"><b>絵探し</b><span>見本と同じ向き・細かさの縞を、16個から選ぶ</span></div>
+                <div class="can"><b>中央の縞</b><span>中央に縞が出たかを答える。正解が続くと縞が薄くなる</span></div>
+              </div>
+            </div>
+            <div class="group">
+              <div class="group-head">よくある質問</div>
+              <div class="card">
+                <details open><summary>画面からどのくらい離れる？</summary><p>約40cm離れます。眼鏡やコンタクトは外し、普段の部屋の明るさで行います。見づらさを我慢して続ける必要はありません。</p></details>
+                <details><summary>ホームの点は何を表す？</summary><p>やった日を1日1つずつ表しています。1日に何回やっても1つです。100日で1枚の絵になり、何の絵かは完成するまで分かりません。色は月ごとに変わり、古い月ほど薄くなります。</p></details>
+                <details><summary>画面サイズ合わせは何のため？</summary><p>端末ごとに画面の実寸が違うためです。40cm離れたときの縞の細かさを計算するのに使います。端末を変えたら合わせ直します。</p></details>
+                <details><summary>目の疲れの数字の付け方は？</summary><p>0は疲れなし、10はかなり強い疲れです。始める前と終わった後に付け、記録に前後の変化が残ります。</p></details>
+                <details><summary>休憩で遠くを見るのはなぜ？</summary><p>近くを見続けた後に、約6m先を20秒見て、目のピント調節を休めます。肩の力を抜き、意識して数回まばたきをします。</p></details>
+                <details><summary>使うのをやめる目安は？</summary><p>目の痛み、物が二重に見える、頭痛や吐き気、急なかすみ、片目だけの見え方の変化、終わった後も続く強い疲れ。どれかがあればその日は中止し、眼科を受診します。</p></details>
+                <details><summary>このアプリは何のため？</summary><p>ガボール刺激を使った見え方の練習と、近くを見た後の休憩を続けるための個人用ツールです。医療機器ではなく、視力検査や屈折異常の治療の代わりにはなりません。</p></details>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 10 裏方シート：設定 -->
+    <section class="frame">
+      <div class="frame-cap">10 使い方・設定 › 設定</div>
+      <div class="phone">
+        <div class="sheet-scrim"></div>
+        <div class="sheet">
+          <div class="sheet-grab"></div>
+          <div class="sheet-head"><span class="sheet-title">使い方・設定</span><button class="text-btn">閉じる</button></div>
+          <div class="tabs" role="tablist"><button class="tab" role="tab">使い方</button><button class="tab on" role="tab">設定</button><button class="tab" role="tab">保守</button></div>
+          <div class="sheet-body">
+            <div class="group">
+              <div class="group-head">画面サイズ</div>
+              <div class="card">
+                <div class="row"><div class="row-main">合わせ済み</div><button class="btn btn--quiet">合わせ直す</button></div>
+              </div>
+            </div>
+            <div class="group">
+              <div class="group-head">中央の縞</div>
+              <div class="card">
+                <div class="row"><div class="row-main">練習 3問</div><button class="btn btn--quiet">次回もう一度</button></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 11 裏方シート：保守 -->
+    <section class="frame">
+      <div class="frame-cap">11 使い方・設定 › 保守</div>
+      <div class="phone">
+        <div class="sheet-scrim"></div>
+        <div class="sheet">
+          <div class="sheet-grab"></div>
+          <div class="sheet-head"><span class="sheet-title">使い方・設定</span><button class="text-btn">閉じる</button></div>
+          <div class="tabs" role="tablist"><button class="tab" role="tab">使い方</button><button class="tab" role="tab">設定</button><button class="tab on" role="tab">保守</button></div>
+          <div class="sheet-body">
+            <div class="group">
+              <div class="group-head">データ</div>
+              <div class="card"><div class="row"><div class="row-main">記録</div><div class="row-val num">24件</div></div></div>
+            </div>
+            <div class="group">
+              <div class="group-head">困ったとき</div>
+              <div class="card"><div class="row"><div class="row-main">表示が古いまま</div><button class="btn btn--quiet">更新を確認</button></div></div>
+            </div>
+            <div class="group danger-zone">
+              <div class="group-head">取り消せない操作</div>
+              <button class="btn btn--danger">記録と設定を消去</button>
+            </div>
+            <div class="group">
+              <div class="group-head">このアプリについて</div>
+              <div class="meta">Gabor Care 0.2.0 ・ 医療機器ではありません</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+  </div>
+</div>
+
+<script>
+// 刺激の描画（app.js と同じ式。背景輝度136を地とパッチの両方で使う）
+const BG = 136, PX_PER_MM = 6.2, DIST = 400;
+const period = (cpd) => 2 * DIST * Math.tan((1 / cpd) * Math.PI / 360) * PX_PER_MM;
+
+function prep(c) {
+  const r = c.getBoundingClientRect(), d = devicePixelRatio || 1;
+  c.width = Math.max(1, Math.round(r.width * d)); c.height = Math.max(1, Math.round(r.height * d));
+  const x = c.getContext("2d", { alpha: false });
+  x.fillStyle = `rgb(${BG},${BG},${BG})`; x.fillRect(0, 0, c.width, c.height);
+  return { x, d, w: r.width, h: r.height };
+}
+function gabor(x, d, cx, cy, ori, cpd, sigma = 11, contrast = 0.72) {
+  const p = period(cpd) * d, s = sigma * d, rad = Math.ceil(s * 3), size = rad * 2 + 1;
+  const img = x.createImageData(size, size), t = ori * Math.PI / 180, co = Math.cos(t), si = Math.sin(t);
+  for (let y = -rad; y <= rad; y++) for (let k = -rad; k <= rad; k++) {
+    const env = Math.exp(-(k * k + y * y) / (2 * s * s));
+    const L = Math.max(0, Math.min(255, BG + BG * contrast * env * Math.cos(2 * Math.PI * (k * co + y * si) / p)));
+    const i = ((y + rad) * size + (k + rad)) * 4;
+    img.data[i] = img.data[i + 1] = img.data[i + 2] = L; img.data[i + 3] = 255;
+  }
+  x.putImageData(img, Math.round(cx * d - rad), Math.round(cy * d - rad));
+}
+const css = (n) => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
+
+document.querySelectorAll("[data-draw]").forEach((c) => {
+  const { x, d, w, h } = prep(c), kind = c.dataset.draw;
+  if (kind === "fixation") {
+    x.strokeStyle = "rgba(30,36,31,.8)"; x.lineWidth = 2 * d; x.beginPath();
+    x.moveTo((w / 2 - 6) * d, h / 2 * d); x.lineTo((w / 2 + 6) * d, h / 2 * d);
+    x.moveTo(w / 2 * d, (h / 2 - 6) * d); x.lineTo(w / 2 * d, (h / 2 + 6) * d); x.stroke();
+  }
+  if (kind === "sample") gabor(x, d, w / 2, h / 2, 45, 3);
+  if (kind === "grid") {
+    const combos = [], oris = [0, 45, 90, 135], fs = [2, 3, 4, 5];
+    oris.forEach((o) => fs.forEach((f) => combos.push([o, f])));
+    const order = [5, 12, 2, 9, 14, 0, 7, 11, 3, 15, 8, 1, 10, 4, 13, 6];
+    const cw = w / 4, ch = h / 4, wrong = 6, right = order.indexOf(5);
+    order.forEach((ci, i) => {
+      const col = i % 4, row = Math.floor(i / 4), [o, f] = combos[ci];
+      gabor(x, d, col * cw + cw / 2, row * ch + ch / 2, o, f);
+    });
+    const box = (i, color, wd, dash) => {
+      const col = i % 4, row = Math.floor(i / 4);
+      x.setLineDash(dash.map((v) => v * d)); x.strokeStyle = color; x.lineWidth = wd * d;
+      x.strokeRect((col * cw + 8) * d, (row * ch + 8) * d, (cw - 16) * d, (ch - 16) * d);
+    };
+    box(right, css("--accent"), 4, []);
+    box(wrong, css("--miss"), 3, [8, 6]);
+  }
+});
+
+// 休憩の残り秒（モックでは20秒ごとに繰り返す）
+let left = 20;
+setInterval(() => { left = left <= 1 ? 20 : left - 1; document.querySelector("#rest-count").textContent = left; }, 1000);
+</script>
+</body>
+</html>
