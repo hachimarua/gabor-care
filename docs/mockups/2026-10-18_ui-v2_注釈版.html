@@ -17,6 +17,8 @@
   --ink-faint:#7a8771;
   --accent:#3c7052;        /* H145 S30。現行 #466b55 とほぼ同じ見え方 */
   --accent-soft:#cedfd5;
+  --month-8:#3d6c7c;       /* 育つ図の月の色。H195・H170、アクセントと同じ調子（palette.py Sa.34） */
+  --month-9:#376f66;
   --miss:#975157;          /* 副次色。アクセントの分割補色 H355・同じ調子。誤答と取り消せない操作だけ */
   --miss-soft:#e5d8d9;
   --stage:#888888;         /* 刺激の背景。UIではなくデータ。パッチの背景輝度136と一致させる */
@@ -138,45 +140,29 @@ button{font:inherit;color:inherit}
 .start-arrow{font-family:var(--font-num);font-weight:400;opacity:.75;transition:transform 420ms var(--ease)}
 .start--lead:hover .start-arrow{transform:translateX(4px)}
 
-.home-d .history,.home-e .history,.home-f .history{padding-top:var(--sp-7)}
+.home-g .history,.home-h .history,.home-i .history{padding-top:var(--sp-7)}
 .home-body{display:grid;gap:var(--sp-5);padding:0 var(--sp-5)}
 .start-side{display:flex;align-items:center;gap:var(--sp-3)}
 .start-sub{font-size:var(--text-meta);font-weight:600;letter-spacing:.04em;opacity:.85}
 
-/* 1D 週の輪 */
-.goal-step{display:flex;gap:var(--sp-3)}
-.goal-step .step{width:44px;height:44px}
-.goal{position:relative;width:248px;height:248px;margin:var(--sp-5) auto var(--sp-6)}
-.goal-ring{width:100%;height:100%;transform:rotate(-90deg)}
-.goal-track{fill:none;stroke:var(--surface-2);stroke-width:16}
-.goal-arc{fill:none;stroke:var(--accent);stroke-width:16;stroke-linecap:round;stroke-dasharray:691.15;stroke-dashoffset:172.79;animation:grow 1.2s var(--ease) both}
-@keyframes grow{from{stroke-dashoffset:691.15}}
-.goal-center{position:absolute;inset:0;display:grid;place-content:center;text-align:center}
-.goal-num{font-size:72px;font-weight:700;line-height:1;letter-spacing:-.03em}
-.goal-num span{font-size:28px;font-weight:600;color:var(--ink-faint);letter-spacing:0}
-.goal-label{color:var(--ink-soft);margin-top:var(--sp-2)}
-
-/* 1E 今月の暦 */
-.month{padding:var(--sp-4) var(--sp-5) var(--sp-6)}
-.month-head{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:var(--sp-4)}
-.month-name,.month-count{font-size:var(--text-h3);font-weight:700}
-.month-count{color:var(--accent)}
-.cal-heads,.cal{display:grid;grid-template-columns:repeat(7,1fr);justify-items:center}
-.cal-heads{color:var(--ink-faint);font-size:var(--text-meta);margin-bottom:var(--sp-2)}
-.cal{row-gap:var(--sp-2)}
-.cal-day{display:grid;place-items:center;width:40px;height:40px;border-radius:50%;font-family:var(--font-num);font-variant-numeric:tabular-nums;color:var(--ink-soft)}
-.cal-day.done{background:var(--accent);color:#fff;font-weight:700;animation:pop 360ms var(--ease) both}
-.cal-day.today{box-shadow:inset 0 0 0 2px var(--accent);color:var(--ink);font-weight:700}
-.cal-day.future{color:var(--ink-faint);opacity:.6}
-@keyframes pop{from{transform:scale(.4);opacity:0}}
-
-/* 1F 今日の日付 */
-.dateline{display:flex;align-items:flex-end;gap:var(--sp-4);padding:var(--sp-6) var(--sp-5) var(--sp-6)}
-.date-big{font-size:168px;font-weight:200;line-height:.82;letter-spacing:-.07em;margin-left:-8px}
-.date-side{display:grid;padding-bottom:var(--sp-2)}
-.date-side b{font-size:var(--text-h3)}
-.date-side span{color:var(--ink-soft)}
-.week-sum{color:var(--ink-soft);margin-top:calc(var(--sp-2) * -1)}
+/* 育つ図（1G・1H・1I）。色は月ごと: 8月H195・9月H170・10月H145（アクセント）。palette.py で調子を揃えた */
+.grow{display:grid;place-items:center;padding:var(--sp-4) var(--sp-5) var(--sp-5)}
+.grow-svg{width:100%;max-width:320px;height:auto;overflow:visible}
+.m8{--c:var(--month-8);--o:.45} .m9{--c:var(--month-9);--o:.72} .m10{--c:var(--accent);--o:1}   /* 古い月ほど薄く */
+.seed,.tile{fill:var(--c);fill-opacity:var(--o);transform-box:fill-box;transform-origin:center;animation:sprout 420ms var(--ease) both}
+.seed.last,.tile.last{animation:sprout-last 900ms var(--ease) both}
+.seed-next,.tile-next{fill:none;stroke:var(--accent);stroke-width:1.5;stroke-dasharray:3 3;animation:breathe 2.4s ease-in-out infinite}
+.tile-empty{fill:var(--line)}
+.seg{stroke:var(--c);stroke-opacity:var(--o);stroke-linecap:round;animation:sprout 420ms var(--ease) both}
+.seg-next{stroke:var(--accent);stroke-width:2;stroke-dasharray:4 5;stroke-linecap:round;animation:breathe 2.4s ease-in-out infinite}
+.seg-empty{stroke:var(--line);stroke-width:1;stroke-linecap:round}
+@keyframes sprout{from{transform:scale(0);opacity:0}}
+@keyframes sprout-last{0%{transform:scale(0);opacity:0}60%{transform:scale(1.6)}100%{transform:scale(1)}}
+@keyframes breathe{50%{opacity:.25}}
+.tally2{display:flex;align-items:baseline;justify-content:space-between;gap:var(--sp-3)}
+.tally2-num{font-size:40px;font-weight:700;letter-spacing:-.03em;line-height:1}
+.tally2-num small{font-size:var(--text-h3);font-weight:600;color:var(--ink-faint);letter-spacing:0}
+.tally2-sub{color:var(--ink-soft);font-size:var(--text-meta)}
 
 /* ── 2 始める前の目の疲れ ── */
 .scale{display:grid;grid-template-columns:repeat(6,1fr);gap:10px;margin-top:var(--sp-6)}
@@ -278,27 +264,18 @@ details p{padding:0 0 var(--sp-4);color:var(--ink-soft)}
 
   <div class="frames">
 
-    <!-- 1D ホーム：週の輪（推奨） -->
+    <!-- 1G ホーム：黄金角の点描（推奨） -->
     <section class="frame">
-      <div class="frame-cap">1D ホーム・週の輪（推奨）</div>
-      <div class="phone screen-home home-d">
+      <div class="frame-cap">1G ホーム・黄金角の点描（推奨）</div>
+      <div class="phone screen-home home-g">
         <div class="home-top2"><span class="date-meta num">10月18日 日曜</span><button class="icon-btn more-btn open-backstage" aria-label="使い方・設定"><svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><circle cx="5" cy="12" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="19" cy="12" r="2"/></svg></button></div>
-        <div class="goal" data-deviation="今週の日数を、目標に対する輪の長さで出す。開いたときに輪が今の位置まで伸びる。あと何日で目標に届くかを、数字を読む前に分かるようにするため">
-          <svg class="goal-ring" viewBox="0 0 248 248" aria-hidden="true"><circle class="goal-track" cx="124" cy="124" r="110"/><circle class="goal-arc" cx="124" cy="124" r="110"/></svg>
-          <div class="goal-center"><div class="goal-num num">3<span>/4</span></div><div class="goal-label">今週の日数</div></div>
+        <div class="grow" data-deviation="1日やるごとに点が1つ増え、ひまわりの種の並び（黄金角）で外へ広がっていく図を主画面に置く。続けた日数がそのまま形になり、開くたびに少しずつ違う画面になるため">
+          <svg class="grow-svg" viewBox="0 0 320 320" role="img" aria-label="46日分の記録"><circle class="seed m8" cx="171.6" cy="160.0" r="6.6" style="animation-delay:0ms"/><circle class="seed m8" cx="146.0" cy="172.8" r="6.6" style="animation-delay:22ms"/><circle class="seed m8" cx="162.2" cy="135.9" r="6.6" style="animation-delay:44ms"/><circle class="seed m8" cx="177.3" cy="182.6" r="6.6" style="animation-delay:66ms"/><circle class="seed m8" cx="128.3" cy="154.4" r="6.6" style="animation-delay:88ms"/><circle class="seed m8" cx="190.0" cy="140.9" r="6.6" style="animation-delay:110ms"/><circle class="seed m8" cx="150.0" cy="197.2" r="6.6" style="animation-delay:132ms"/><circle class="seed m8" cx="140.9" cy="123.3" r="6.6" style="animation-delay:154ms"/><circle class="seed m8" cx="201.4" cy="175.1" r="4.2" style="animation-delay:176ms"/><circle class="seed m8" cx="117.0" cy="177.7" r="6.6" style="animation-delay:198ms"/><circle class="seed m8" cx="180.7" cy="115.8" r="6.6" style="animation-delay:220ms"/><circle class="seed m8" cx="175.3" cy="208.8" r="6.6" style="animation-delay:242ms"/><circle class="seed m8" cx="114.0" cy="133.3" r="6.6" style="animation-delay:264ms"/><circle class="seed m8" cx="214.0" cy="148.2" r="6.6" style="animation-delay:286ms"/><circle class="seed m8" cx="127.0" cy="206.9" r="6.6" style="animation-delay:308ms"/><circle class="seed m8" cx="152.4" cy="101.2" r="6.6" style="animation-delay:330ms"/><circle class="seed m8" cx="206.7" cy="199.4" r="6.6" style="animation-delay:352ms"/><circle class="seed m8" cx="97.2" cy="162.6" r="6.6" style="animation-delay:374ms"/><circle class="seed m8" cx="205.9" cy="114.3" r="4.2" style="animation-delay:396ms"/><circle class="seed m9" cx="156.9" cy="226.4" r="4.2" style="animation-delay:418ms"/><circle class="seed m9" cx="116.4" cy="107.7" r="6.6" style="animation-delay:440ms"/><circle class="seed m9" cx="229.1" cy="169.3" r="6.6" style="animation-delay:462ms"/><circle class="seed m9" cx="101.5" cy="200.7" r="6.6" style="animation-delay:484ms"/><circle class="seed m9" cx="176.0" cy="88.9" r="4.2" style="animation-delay:506ms"/><circle class="seed m9" cx="196.9" cy="224.5" r="6.6" style="animation-delay:528ms"/><circle class="seed m9" cx="87.7" cy="136.9" r="6.6" style="animation-delay:550ms"/><circle class="seed m9" cx="230.2" cy="127.6" r="6.6" style="animation-delay:572ms"/><circle class="seed m9" cx="129.5" cy="232.7" r="6.6" style="animation-delay:594ms"/><circle class="seed m9" cx="132.8" cy="84.5" r="6.6" style="animation-delay:616ms"/><circle class="seed m9" cx="232.3" cy="198.0" r="6.6" style="animation-delay:638ms"/><circle class="seed m9" cx="79.8" cy="181.1" r="6.6" style="animation-delay:660ms"/><circle class="seed m9" cx="205.6" cy="89.1" r="4.2" style="animation-delay:682ms"/><circle class="seed m9" cx="174.5" cy="244.4" r="6.6" style="animation-delay:704ms"/><circle class="seed m9" cx="91.2" cy="106.7" r="4.2" style="animation-delay:726ms"/><circle class="seed m9" cx="248.0" cy="152.7" r="6.6" style="animation-delay:748ms"/><circle class="seed m9" cx="99.2" cy="225.7" r="4.2" style="animation-delay:770ms"/><circle class="seed m9" cx="160.5" cy="69.2" r="6.6" style="animation-delay:792ms"/><circle class="seed m10" cx="221.8" cy="228.2" r="6.6" style="animation-delay:814ms"/><circle class="seed m10" cx="67.2" cy="151.4" r="4.2" style="animation-delay:836ms"/><circle class="seed m10" cx="235.2" cy="103.0" r="4.2" style="animation-delay:858ms"/><circle class="seed m10" cx="142.8" cy="254.0" r="6.6" style="animation-delay:880ms"/><circle class="seed m10" cx="108.5" cy="78.1" r="6.6" style="animation-delay:902ms"/><circle class="seed m10" cx="254.4" cy="185.9" r="6.6" style="animation-delay:924ms"/><circle class="seed m10" cx="71.8" cy="205.2" r="6.6" style="animation-delay:946ms"/><circle class="seed m10" cx="194.9" cy="66.0" r="6.6" style="animation-delay:968ms"/><circle class="seed m10 last" cx="198.2" cy="253.9" r="6.6" style="animation-delay:990ms"/><circle class="seed-next" cx="67.5" cy="116.1" r="6.6"/></svg>
         </div>
         <div class="home-body">
-          <ol class="week" aria-label="今週">
-            <li class="d"><span>月</span><i></i></li>
-            <li class="d done"><span>火</span><i></i></li>
-            <li class="d"><span>水</span><i></i></li>
-            <li class="d done"><span>木</span><i></i></li>
-            <li class="d"><span>金</span><i></i></li>
-            <li class="d done"><span>土</span><i></i></li>
-            <li class="d today"><span>日</span><i></i></li>
-          </ol>
+          <div class="tally2"><span class="tally2-num num">46日</span><span class="tally2-sub">8月3日から</span></div>
           <div class="starts">
-            <button class="start start--lead" data-lead><span>絵探し</span><span class="start-side"><span class="start-sub">今週4日目</span><span class="start-arrow" aria-hidden="true">→</span></span></button>
+            <button class="start start--lead" data-lead><span>絵探し</span><span class="start-side"><span class="start-sub">47日目</span><span class="start-arrow" aria-hidden="true">→</span></span></button>
             <button class="start start--quiet"><span>中央の縞</span><span class="start-arrow" aria-hidden="true">→</span></button>
           </div>
         </div>
@@ -323,54 +300,18 @@ details p{padding:0 0 var(--sp-4);color:var(--ink-soft)}
       </div>
     </section>
 
-    <!-- 1E ホーム：今月の暦 -->
+    <!-- 1H ホーム：100日のタイル -->
     <section class="frame">
-      <div class="frame-cap">1E ホーム・今月の暦</div>
-      <div class="phone home-e">
+      <div class="frame-cap">1H ホーム・100日のタイル</div>
+      <div class="phone home-h">
         <div class="home-top2"><span class="date-meta num">10月18日 日曜</span><button class="icon-btn more-btn open-backstage" aria-label="使い方・設定"><svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><circle cx="5" cy="12" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="19" cy="12" r="2"/></svg></button></div>
-        <div class="month" data-deviation="今月の暦を主画面の中心に置き、やった日を塗る。開いたときに塗った日が日付順に現れる。続けてきた日と空いた日の並びを、一目で見せるため">
-          <div class="month-head"><span class="month-name">10月</span><span class="month-count num">9日</span></div>
-          <div class="cal-heads"><span>月</span><span>火</span><span>水</span><span>木</span><span>金</span><span>土</span><span>日</span></div>
-          <div class="cal">
-              <span class="cal-blank"></span>
-              <span class="cal-blank"></span>
-              <span class="cal-blank"></span>
-              <span class="cal-day">1</span>
-              <span class="cal-day done">2</span>
-              <span class="cal-day done">3</span>
-              <span class="cal-day">4</span>
-              <span class="cal-day">5</span>
-              <span class="cal-day done">6</span>
-              <span class="cal-day">7</span>
-              <span class="cal-day done">8</span>
-              <span class="cal-day done">9</span>
-              <span class="cal-day">10</span>
-              <span class="cal-day done">11</span>
-              <span class="cal-day">12</span>
-              <span class="cal-day done">13</span>
-              <span class="cal-day">14</span>
-              <span class="cal-day done">15</span>
-              <span class="cal-day">16</span>
-              <span class="cal-day done">17</span>
-              <span class="cal-day today">18</span>
-              <span class="cal-day future">19</span>
-              <span class="cal-day future">20</span>
-              <span class="cal-day future">21</span>
-              <span class="cal-day future">22</span>
-              <span class="cal-day future">23</span>
-              <span class="cal-day future">24</span>
-              <span class="cal-day future">25</span>
-              <span class="cal-day future">26</span>
-              <span class="cal-day future">27</span>
-              <span class="cal-day future">28</span>
-              <span class="cal-day future">29</span>
-              <span class="cal-day future">30</span>
-              <span class="cal-day future">31</span>
-          </div>
+        <div class="grow" data-deviation="10×10の升目を、1日やるごとに中心から渦を巻く順で1枚ずつ埋める。100日で1枚の図柄が完成するので、残りの量と全体の形が見えるため">
+          <svg class="grow-svg" viewBox="0 0 320 320" role="img" aria-label="46日分の記録（100日のうち）"><rect class="tile m8" x="129" y="129" width="28" height="28" rx="5" style="animation-delay:0ms"/><rect class="tile m8" x="160" y="129" width="28" height="28" rx="5" style="animation-delay:18ms"/><rect class="tile m8" x="160" y="160" width="28" height="28" rx="5" style="animation-delay:36ms"/><rect class="tile m8" x="129" y="160" width="28" height="28" rx="5" style="animation-delay:54ms"/><rect class="tile m8" x="98" y="160" width="28" height="28" rx="5" style="animation-delay:72ms"/><rect class="tile m8" x="98" y="129" width="28" height="28" rx="5" style="animation-delay:90ms"/><rect class="tile m8" x="98" y="98" width="28" height="28" rx="5" style="animation-delay:108ms"/><rect class="tile m8" x="129" y="98" width="28" height="28" rx="5" style="animation-delay:126ms"/><rect class="tile m8" x="166" y="104" width="16" height="16" rx="5" style="animation-delay:144ms"/><rect class="tile m8" x="191" y="98" width="28" height="28" rx="5" style="animation-delay:162ms"/><rect class="tile m8" x="191" y="129" width="28" height="28" rx="5" style="animation-delay:180ms"/><rect class="tile m8" x="191" y="160" width="28" height="28" rx="5" style="animation-delay:198ms"/><rect class="tile m8" x="191" y="191" width="28" height="28" rx="5" style="animation-delay:216ms"/><rect class="tile m8" x="160" y="191" width="28" height="28" rx="5" style="animation-delay:234ms"/><rect class="tile m8" x="129" y="191" width="28" height="28" rx="5" style="animation-delay:252ms"/><rect class="tile m8" x="98" y="191" width="28" height="28" rx="5" style="animation-delay:270ms"/><rect class="tile m8" x="67" y="191" width="28" height="28" rx="5" style="animation-delay:288ms"/><rect class="tile m8" x="67" y="160" width="28" height="28" rx="5" style="animation-delay:306ms"/><rect class="tile m8" x="73" y="135" width="16" height="16" rx="5" style="animation-delay:324ms"/><rect class="tile m9" x="73" y="104" width="16" height="16" rx="5" style="animation-delay:342ms"/><rect class="tile m9" x="67" y="67" width="28" height="28" rx="5" style="animation-delay:360ms"/><rect class="tile m9" x="98" y="67" width="28" height="28" rx="5" style="animation-delay:378ms"/><rect class="tile m9" x="129" y="67" width="28" height="28" rx="5" style="animation-delay:396ms"/><rect class="tile m9" x="166" y="73" width="16" height="16" rx="5" style="animation-delay:414ms"/><rect class="tile m9" x="191" y="67" width="28" height="28" rx="5" style="animation-delay:432ms"/><rect class="tile m9" x="222" y="67" width="28" height="28" rx="5" style="animation-delay:450ms"/><rect class="tile m9" x="222" y="98" width="28" height="28" rx="5" style="animation-delay:468ms"/><rect class="tile m9" x="222" y="129" width="28" height="28" rx="5" style="animation-delay:486ms"/><rect class="tile m9" x="222" y="160" width="28" height="28" rx="5" style="animation-delay:504ms"/><rect class="tile m9" x="222" y="191" width="28" height="28" rx="5" style="animation-delay:522ms"/><rect class="tile m9" x="222" y="222" width="28" height="28" rx="5" style="animation-delay:540ms"/><rect class="tile m9" x="197" y="228" width="16" height="16" rx="5" style="animation-delay:558ms"/><rect class="tile m9" x="160" y="222" width="28" height="28" rx="5" style="animation-delay:576ms"/><rect class="tile m9" x="135" y="228" width="16" height="16" rx="5" style="animation-delay:594ms"/><rect class="tile m9" x="98" y="222" width="28" height="28" rx="5" style="animation-delay:612ms"/><rect class="tile m9" x="73" y="228" width="16" height="16" rx="5" style="animation-delay:630ms"/><rect class="tile m9" x="36" y="222" width="28" height="28" rx="5" style="animation-delay:648ms"/><rect class="tile m10" x="36" y="191" width="28" height="28" rx="5" style="animation-delay:666ms"/><rect class="tile m10" x="42" y="166" width="16" height="16" rx="5" style="animation-delay:684ms"/><rect class="tile m10" x="42" y="135" width="16" height="16" rx="5" style="animation-delay:702ms"/><rect class="tile m10" x="36" y="98" width="28" height="28" rx="5" style="animation-delay:720ms"/><rect class="tile m10" x="36" y="67" width="28" height="28" rx="5" style="animation-delay:738ms"/><rect class="tile m10" x="36" y="36" width="28" height="28" rx="5" style="animation-delay:756ms"/><rect class="tile m10" x="67" y="36" width="28" height="28" rx="5" style="animation-delay:774ms"/><rect class="tile m10" x="98" y="36" width="28" height="28" rx="5" style="animation-delay:792ms"/><rect class="tile m10 last" x="129" y="36" width="28" height="28" rx="5" style="animation-delay:810ms"/><rect class="tile-next" x="161" y="37" width="26" height="26" rx="5"/><rect class="tile-empty" x="203.0" y="48.0" width="4" height="4" rx="2"/><rect class="tile-empty" x="234.0" y="48.0" width="4" height="4" rx="2"/><rect class="tile-empty" x="265.0" y="48.0" width="4" height="4" rx="2"/><rect class="tile-empty" x="265.0" y="79.0" width="4" height="4" rx="2"/><rect class="tile-empty" x="265.0" y="110.0" width="4" height="4" rx="2"/><rect class="tile-empty" x="265.0" y="141.0" width="4" height="4" rx="2"/><rect class="tile-empty" x="265.0" y="172.0" width="4" height="4" rx="2"/><rect class="tile-empty" x="265.0" y="203.0" width="4" height="4" rx="2"/><rect class="tile-empty" x="265.0" y="234.0" width="4" height="4" rx="2"/><rect class="tile-empty" x="265.0" y="265.0" width="4" height="4" rx="2"/><rect class="tile-empty" x="234.0" y="265.0" width="4" height="4" rx="2"/><rect class="tile-empty" x="203.0" y="265.0" width="4" height="4" rx="2"/><rect class="tile-empty" x="172.0" y="265.0" width="4" height="4" rx="2"/><rect class="tile-empty" x="141.0" y="265.0" width="4" height="4" rx="2"/><rect class="tile-empty" x="110.0" y="265.0" width="4" height="4" rx="2"/><rect class="tile-empty" x="79.0" y="265.0" width="4" height="4" rx="2"/><rect class="tile-empty" x="48.0" y="265.0" width="4" height="4" rx="2"/><rect class="tile-empty" x="17.0" y="265.0" width="4" height="4" rx="2"/><rect class="tile-empty" x="17.0" y="234.0" width="4" height="4" rx="2"/><rect class="tile-empty" x="17.0" y="203.0" width="4" height="4" rx="2"/><rect class="tile-empty" x="17.0" y="172.0" width="4" height="4" rx="2"/><rect class="tile-empty" x="17.0" y="141.0" width="4" height="4" rx="2"/><rect class="tile-empty" x="17.0" y="110.0" width="4" height="4" rx="2"/><rect class="tile-empty" x="17.0" y="79.0" width="4" height="4" rx="2"/><rect class="tile-empty" x="17.0" y="48.0" width="4" height="4" rx="2"/><rect class="tile-empty" x="17.0" y="17.0" width="4" height="4" rx="2"/><rect class="tile-empty" x="48.0" y="17.0" width="4" height="4" rx="2"/><rect class="tile-empty" x="79.0" y="17.0" width="4" height="4" rx="2"/><rect class="tile-empty" x="110.0" y="17.0" width="4" height="4" rx="2"/><rect class="tile-empty" x="141.0" y="17.0" width="4" height="4" rx="2"/><rect class="tile-empty" x="172.0" y="17.0" width="4" height="4" rx="2"/><rect class="tile-empty" x="203.0" y="17.0" width="4" height="4" rx="2"/><rect class="tile-empty" x="234.0" y="17.0" width="4" height="4" rx="2"/><rect class="tile-empty" x="265.0" y="17.0" width="4" height="4" rx="2"/><rect class="tile-empty" x="296.0" y="17.0" width="4" height="4" rx="2"/><rect class="tile-empty" x="296.0" y="48.0" width="4" height="4" rx="2"/><rect class="tile-empty" x="296.0" y="79.0" width="4" height="4" rx="2"/><rect class="tile-empty" x="296.0" y="110.0" width="4" height="4" rx="2"/><rect class="tile-empty" x="296.0" y="141.0" width="4" height="4" rx="2"/><rect class="tile-empty" x="296.0" y="172.0" width="4" height="4" rx="2"/><rect class="tile-empty" x="296.0" y="203.0" width="4" height="4" rx="2"/><rect class="tile-empty" x="296.0" y="234.0" width="4" height="4" rx="2"/><rect class="tile-empty" x="296.0" y="265.0" width="4" height="4" rx="2"/><rect class="tile-empty" x="296.0" y="296.0" width="4" height="4" rx="2"/><rect class="tile-empty" x="265.0" y="296.0" width="4" height="4" rx="2"/><rect class="tile-empty" x="234.0" y="296.0" width="4" height="4" rx="2"/><rect class="tile-empty" x="203.0" y="296.0" width="4" height="4" rx="2"/><rect class="tile-empty" x="172.0" y="296.0" width="4" height="4" rx="2"/><rect class="tile-empty" x="141.0" y="296.0" width="4" height="4" rx="2"/><rect class="tile-empty" x="110.0" y="296.0" width="4" height="4" rx="2"/><rect class="tile-empty" x="79.0" y="296.0" width="4" height="4" rx="2"/><rect class="tile-empty" x="48.0" y="296.0" width="4" height="4" rx="2"/><rect class="tile-empty" x="17.0" y="296.0" width="4" height="4" rx="2"/></svg>
         </div>
         <div class="home-body">
+          <div class="tally2"><span class="tally2-num num">46<small>/100</small></span><span class="tally2-sub">8月3日から</span></div>
           <div class="starts">
-            <button class="start start--lead" data-lead><span>絵探し</span><span class="start-side"><span class="start-sub">今週4日目</span><span class="start-arrow" aria-hidden="true">→</span></span></button>
+            <button class="start start--lead" data-lead><span>絵探し</span><span class="start-side"><span class="start-sub">47枚目</span><span class="start-arrow" aria-hidden="true">→</span></span></button>
             <button class="start start--quiet"><span>中央の縞</span><span class="start-arrow" aria-hidden="true">→</span></button>
           </div>
         </div>
@@ -395,28 +336,18 @@ details p{padding:0 0 var(--sp-4);color:var(--ink-soft)}
       </div>
     </section>
 
-    <!-- 1F ホーム：今日の日付 -->
+    <!-- 1I ホーム：一筆書き -->
     <section class="frame">
-      <div class="frame-cap">1F ホーム・今日の日付</div>
-      <div class="phone home-f">
-        <div class="home-top2"><span></span><button class="icon-btn more-btn open-backstage" aria-label="使い方・設定"><svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><circle cx="5" cy="12" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="19" cy="12" r="2"/></svg></button></div>
-        <div class="dateline" data-deviation="今日の日付だけを極端に大きく出し、その下に今週の7日を並べる。今日がまだ空いていることを、文字を足さずに見せるため">
-          <div class="date-big num">18</div>
-          <div class="date-side"><b>日曜</b><span class="num">2026年10月</span></div>
+      <div class="frame-cap">1I ホーム・一筆書き</div>
+      <div class="phone home-i">
+        <div class="home-top2"><span class="date-meta num">10月18日 日曜</span><button class="icon-btn more-btn open-backstage" aria-label="使い方・設定"><svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><circle cx="5" cy="12" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="19" cy="12" r="2"/></svg></button></div>
+        <div class="grow" data-deviation="1本の線が1日1区間ずつ伸び、64区間で正方形を一筆書きで描き切る。次にどこへ伸びるかが見えていて、続きを描きたくなるため">
+          <svg class="grow-svg" viewBox="0 0 320 320" role="img" aria-label="46日分の記録（64区間のうち）"><line class="seg m8" x1="27" y1="27" x2="27" y2="65" stroke-width="7" style="animation-delay:0ms"/><line class="seg m8" x1="27" y1="65" x2="65" y2="65" stroke-width="7" style="animation-delay:28ms"/><line class="seg m8" x1="65" y1="65" x2="65" y2="27" stroke-width="7" style="animation-delay:56ms"/><line class="seg m8" x1="65" y1="27" x2="103" y2="27" stroke-width="7" style="animation-delay:84ms"/><line class="seg m8" x1="103" y1="27" x2="141" y2="27" stroke-width="7" style="animation-delay:112ms"/><line class="seg m8" x1="141" y1="27" x2="141" y2="65" stroke-width="7" style="animation-delay:140ms"/><line class="seg m8" x1="141" y1="65" x2="103" y2="65" stroke-width="7" style="animation-delay:168ms"/><line class="seg m8" x1="103" y1="65" x2="103" y2="103" stroke-width="7" style="animation-delay:196ms"/><line class="seg m8" x1="103" y1="103" x2="141" y2="103" stroke-width="3.5" style="animation-delay:224ms"/><line class="seg m8" x1="141" y1="103" x2="141" y2="141" stroke-width="7" style="animation-delay:252ms"/><line class="seg m8" x1="141" y1="141" x2="103" y2="141" stroke-width="7" style="animation-delay:280ms"/><line class="seg m8" x1="103" y1="141" x2="65" y2="141" stroke-width="7" style="animation-delay:308ms"/><line class="seg m8" x1="65" y1="141" x2="65" y2="103" stroke-width="7" style="animation-delay:336ms"/><line class="seg m8" x1="65" y1="103" x2="27" y2="103" stroke-width="7" style="animation-delay:364ms"/><line class="seg m8" x1="27" y1="103" x2="27" y2="141" stroke-width="7" style="animation-delay:392ms"/><line class="seg m8" x1="27" y1="141" x2="27" y2="179" stroke-width="7" style="animation-delay:420ms"/><line class="seg m8" x1="27" y1="179" x2="65" y2="179" stroke-width="7" style="animation-delay:448ms"/><line class="seg m8" x1="65" y1="179" x2="65" y2="217" stroke-width="7" style="animation-delay:476ms"/><line class="seg m8" x1="65" y1="217" x2="27" y2="217" stroke-width="3.5" style="animation-delay:504ms"/><line class="seg m9" x1="27" y1="217" x2="27" y2="255" stroke-width="3.5" style="animation-delay:532ms"/><line class="seg m9" x1="27" y1="255" x2="27" y2="293" stroke-width="7" style="animation-delay:560ms"/><line class="seg m9" x1="27" y1="293" x2="65" y2="293" stroke-width="7" style="animation-delay:588ms"/><line class="seg m9" x1="65" y1="293" x2="65" y2="255" stroke-width="7" style="animation-delay:616ms"/><line class="seg m9" x1="65" y1="255" x2="103" y2="255" stroke-width="3.5" style="animation-delay:644ms"/><line class="seg m9" x1="103" y1="255" x2="103" y2="293" stroke-width="7" style="animation-delay:672ms"/><line class="seg m9" x1="103" y1="293" x2="141" y2="293" stroke-width="7" style="animation-delay:700ms"/><line class="seg m9" x1="141" y1="293" x2="141" y2="255" stroke-width="7" style="animation-delay:728ms"/><line class="seg m9" x1="141" y1="255" x2="141" y2="217" stroke-width="7" style="animation-delay:756ms"/><line class="seg m9" x1="141" y1="217" x2="103" y2="217" stroke-width="7" style="animation-delay:784ms"/><line class="seg m9" x1="103" y1="217" x2="103" y2="179" stroke-width="7" style="animation-delay:812ms"/><line class="seg m9" x1="103" y1="179" x2="141" y2="179" stroke-width="7" style="animation-delay:840ms"/><line class="seg m9" x1="141" y1="179" x2="179" y2="179" stroke-width="3.5" style="animation-delay:868ms"/><line class="seg m9" x1="179" y1="179" x2="217" y2="179" stroke-width="7" style="animation-delay:896ms"/><line class="seg m9" x1="217" y1="179" x2="217" y2="217" stroke-width="3.5" style="animation-delay:924ms"/><line class="seg m9" x1="217" y1="217" x2="179" y2="217" stroke-width="7" style="animation-delay:952ms"/><line class="seg m9" x1="179" y1="217" x2="179" y2="255" stroke-width="3.5" style="animation-delay:980ms"/><line class="seg m9" x1="179" y1="255" x2="179" y2="293" stroke-width="7" style="animation-delay:1008ms"/><line class="seg m10" x1="179" y1="293" x2="217" y2="293" stroke-width="7" style="animation-delay:1036ms"/><line class="seg m10" x1="217" y1="293" x2="217" y2="255" stroke-width="3.5" style="animation-delay:1064ms"/><line class="seg m10" x1="217" y1="255" x2="255" y2="255" stroke-width="3.5" style="animation-delay:1092ms"/><line class="seg m10" x1="255" y1="255" x2="255" y2="293" stroke-width="7" style="animation-delay:1120ms"/><line class="seg m10" x1="255" y1="293" x2="293" y2="293" stroke-width="7" style="animation-delay:1148ms"/><line class="seg m10" x1="293" y1="293" x2="293" y2="255" stroke-width="7" style="animation-delay:1176ms"/><line class="seg m10" x1="293" y1="255" x2="293" y2="217" stroke-width="7" style="animation-delay:1204ms"/><line class="seg m10" x1="293" y1="217" x2="255" y2="217" stroke-width="7" style="animation-delay:1232ms"/><line class="seg m10 last" x1="255" y1="217" x2="255" y2="179" stroke-width="7" style="animation-delay:1260ms"/><line class="seg-next" x1="255" y1="179" x2="293" y2="179"/><line class="seg-empty" x1="293" y1="179" x2="293" y2="141"/><line class="seg-empty" x1="293" y1="141" x2="293" y2="103"/><line class="seg-empty" x1="293" y1="103" x2="255" y2="103"/><line class="seg-empty" x1="255" y1="103" x2="255" y2="141"/><line class="seg-empty" x1="255" y1="141" x2="217" y2="141"/><line class="seg-empty" x1="217" y1="141" x2="179" y2="141"/><line class="seg-empty" x1="179" y1="141" x2="179" y2="103"/><line class="seg-empty" x1="179" y1="103" x2="217" y2="103"/><line class="seg-empty" x1="217" y1="103" x2="217" y2="65"/><line class="seg-empty" x1="217" y1="65" x2="179" y2="65"/><line class="seg-empty" x1="179" y1="65" x2="179" y2="27"/><line class="seg-empty" x1="179" y1="27" x2="217" y2="27"/><line class="seg-empty" x1="217" y1="27" x2="255" y2="27"/><line class="seg-empty" x1="255" y1="27" x2="255" y2="65"/><line class="seg-empty" x1="255" y1="65" x2="293" y2="65"/><line class="seg-empty" x1="293" y1="65" x2="293" y2="27"/></svg>
         </div>
         <div class="home-body">
-          <ol class="week" aria-label="今週">
-            <li class="d"><span>月</span><i></i></li>
-            <li class="d done"><span>火</span><i></i></li>
-            <li class="d"><span>水</span><i></i></li>
-            <li class="d done"><span>木</span><i></i></li>
-            <li class="d"><span>金</span><i></i></li>
-            <li class="d done"><span>土</span><i></i></li>
-            <li class="d today"><span>日</span><i></i></li>
-          </ol>
-          <div class="week-sum">今週 3日 ・ 前回 昨日</div>
+          <div class="tally2"><span class="tally2-num num">46<small>/64</small></span><span class="tally2-sub">8月3日から</span></div>
           <div class="starts">
-            <button class="start start--lead" data-lead><span>絵探し</span><span class="start-side"><span class="start-sub">今週4日目</span><span class="start-arrow" aria-hidden="true">→</span></span></button>
+            <button class="start start--lead" data-lead><span>絵探し</span><span class="start-side"><span class="start-sub">47区間目</span><span class="start-arrow" aria-hidden="true">→</span></span></button>
             <button class="start start--quiet"><span>中央の縞</span><span class="start-arrow" aria-hidden="true">→</span></button>
           </div>
         </div>
@@ -682,6 +613,7 @@ details p{padding:0 0 var(--sp-4);color:var(--ink-soft)}
               <div class="group-head">よくある質問</div>
               <div class="card">
                 <details open><summary>画面からどのくらい離れる？</summary><p>約40cm離れます。眼鏡やコンタクトは外し、普段の部屋の明るさで行います。見づらさを我慢して続ける必要はありません。</p></details>
+                <details><summary>ホームの点は何を表す？</summary><p>やった日を1日1つずつ表しています。1日に何回やっても1つです。中心から外へ増え、色は月ごとに変わり、古い月ほど薄くなります。</p></details>
                 <details><summary>画面サイズ合わせは何のため？</summary><p>端末ごとに画面の実寸が違うためです。40cm離れたときの縞の細かさを計算するのに使います。端末を変えたら合わせ直します。</p></details>
                 <details><summary>目の疲れの数字の付け方は？</summary><p>0は疲れなし、10はかなり強い疲れです。始める前と終わった後に付け、記録に前後の変化が残ります。</p></details>
                 <details><summary>休憩で遠くを見るのはなぜ？</summary><p>近くを見続けた後に、約6m先を20秒見て、目のピント調節を休めます。肩の力を抜き、意識して数回まばたきをします。</p></details>
@@ -708,12 +640,6 @@ details p{padding:0 0 var(--sp-4);color:var(--ink-soft)}
               <div class="group-head">画面サイズ</div>
               <div class="card">
                 <div class="row"><div class="row-main">合わせ済み</div><button class="btn btn--quiet">合わせ直す</button></div>
-              </div>
-            </div>
-            <div class="group">
-              <div class="group-head">週の目標</div>
-              <div class="card">
-                <div class="row"><div class="row-main num">4日</div><div class="goal-step"><button class="step" aria-label="1日減らす">−</button><button class="step" aria-label="1日増やす">＋</button></div></div>
               </div>
             </div>
             <div class="group">
@@ -813,9 +739,6 @@ document.querySelectorAll("[data-draw]").forEach((c) => {
   }
 });
 
-// 1E: 塗った日を日付順に 40ms ずつ遅らせて出す
-document.querySelectorAll(".cal-day.done").forEach((el, i) => { el.style.animationDelay = `${i * 40}ms`; });
-
 // 休憩の残り秒（モックでは20秒ごとに繰り返す）
 let left = 20;
 setInterval(() => { left = left <= 1 ? 20 : left - 1; document.querySelector("#rest-count").textContent = left; }, 1000);
@@ -850,7 +773,7 @@ body.anno-off .anno-pin,body.anno-off .anno-card{display:none}
 </style>
 <script>
 (function(){
-  var A = [{"n": 1, "sel": ".screen-home .start--lead", "note": "主役。説明文・バッジを外し、位置と大きさで推す"}, {"n": 2, "sel": ".screen-home .history", "note": "利用状況の3枠を廃止。1行目が前回を兼ねる。既定（絵探し）は無表記"}, {"n": 3, "sel": ".screen-home .footnote", "note": "免責は画面底に1行。全文は使い方へ"}, {"n": 4, "sel": ".screen-home .open-backstage", "note": "開く先は3タブの裏方シート"}, {"n": 14, "sel": ".screen-home .goal", "note": "逸脱1枠。今週の日数を目標に対する輪で出す。開くと輪が伸びる"}, {"n": 15, "sel": ".screen-home .week", "note": "今週の7日（月曜始まり）。済んだ日を塗る。結論は書かない"}, {"n": 16, "sel": ".screen-home .start-sub", "note": "押すと今週何日目になるか。評価は書かない"}, {"n": 5, "sel": ".screen-before .scale", "note": "スライダー → 数字ボタン11個。1タップで決まる"}, {"n": 6, "sel": ".screen-before .seg", "note": "時間の選択を準備画面からここへ。準備画面は廃止"}, {"n": 7, "sel": ".ready", "note": "「40cm・裸眼」は開始前だけ"}, {"n": 8, "sel": ".screen-answer .ask", "note": "14.4px → 17px。十字の間は無表示"}, {"n": 9, "sel": ".sample-bar", "note": "「同じ縞を探す」「見やすい16択」を外した"}, {"n": 10, "sel": ".result", "note": "結果画面の×を廃止（記録が消える操作だったため）"}, {"n": 11, "sel": ".ring", "note": "逸脱1枠。休憩中は残り時間だけを大きく"}, {"n": 12, "sel": ".cal-ctrl", "note": "−／＋で1pxずつ。px表示は外した"}, {"n": 13, "sel": ".danger-zone", "note": "取り消せない操作は64px離し、副次色の枠"}];
+  var A = [{"n": 1, "sel": ".screen-home .start--lead", "note": "主役。説明文・バッジを外し、位置と大きさで推す"}, {"n": 2, "sel": ".screen-home .history", "note": "利用状況の3枠を廃止。1行目が前回を兼ねる。既定（絵探し）は無表記"}, {"n": 3, "sel": ".screen-home .footnote", "note": "免責は画面底に1行。全文は使い方へ"}, {"n": 4, "sel": ".screen-home .open-backstage", "note": "開く先は3タブの裏方シート"}, {"n": 14, "sel": ".screen-home .grow", "note": "逸脱1枠。1日1つ増える点。色は月ごと、古い月ほど薄い"}, {"n": 15, "sel": ".screen-home .seed-next", "note": "次の1つが入る場所。ゆっくり明滅する"}, {"n": 16, "sel": ".screen-home .start-sub", "note": "押すと何日目になるか。評価は書かない"}, {"n": 5, "sel": ".screen-before .scale", "note": "スライダー → 数字ボタン11個。1タップで決まる"}, {"n": 6, "sel": ".screen-before .seg", "note": "時間の選択を準備画面からここへ。準備画面は廃止"}, {"n": 7, "sel": ".ready", "note": "「40cm・裸眼」は開始前だけ"}, {"n": 8, "sel": ".screen-answer .ask", "note": "14.4px → 17px。十字の間は無表示"}, {"n": 9, "sel": ".sample-bar", "note": "「同じ縞を探す」「見やすい16択」を外した"}, {"n": 10, "sel": ".result", "note": "結果画面の×を廃止（記録が消える操作だったため）"}, {"n": 11, "sel": ".ring", "note": "逸脱1枠。休憩中は残り時間だけを大きく"}, {"n": 12, "sel": ".cal-ctrl", "note": "−／＋で1pxずつ。px表示は外した"}, {"n": 13, "sel": ".danger-zone", "note": "取り消せない操作は64px離し、副次色の枠"}];
 
   /* ---- 色は固定せず、元画面のアクセントから導く（DESIGN.md「色の決め方」） ----
      三分割（+120°）の相手を取り、彩度・明度は据え置いて調子を揃える。
