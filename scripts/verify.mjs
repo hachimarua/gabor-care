@@ -10,6 +10,7 @@ const requiredFiles = [
   "icons/icon-192.png",
   "icons/icon-512.png",
   "icons/apple-touch-icon.png",
+  "data/drawings.json",
 ];
 
 for (const file of requiredFiles) {
@@ -20,8 +21,15 @@ const manifest = JSON.parse(await readFile("manifest.webmanifest", "utf8"));
 if (manifest.display !== "standalone") throw new Error("manifest display must be standalone");
 if (!manifest.icons?.some((icon) => icon.sizes === "512x512")) throw new Error("512px icon missing");
 
+const drawingData = JSON.parse(await readFile("data/drawings.json", "utf8"));
+if (drawingData.drawings?.length !== 5) throw new Error("five drawings expected");
+for (const drawing of [drawingData.sample, ...drawingData.drawings]) {
+  if (drawing.points?.length !== 100) throw new Error(`${drawing.id} must have 100 points`);
+  if (!drawing.name_b64) throw new Error(`${drawing.id} name missing`);
+}
+
 const appSource = await readFile("app.js", "utf8");
-for (const feature of ["drawGabor", "periodPixels", "renderCalibration", "renderRest", "startStandard", "startGame"]) {
+for (const feature of ["drawGabor", "periodPixels", "renderCalibration", "renderRest", "startStandard", "startGame", "drawingSvg", "openBackstage", "checkForUpdate"]) {
   if (!appSource.includes(`function ${feature}`)) throw new Error(`${feature} missing`);
 }
 
